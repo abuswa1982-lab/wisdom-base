@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wisdom Base</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#15181d; --muted:#666e7a;
+    --line:#e2e5ea; --accent:#1f6f6b; --accent-soft:#e8f2f1;
+    --warn:#8a5a00; --warn-soft:#fdf3e0; --danger:#a3342b; --danger-soft:#fbebe9;
+    --ok:#1f6f4a; --ok-soft:#e7f3ec; --radius:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:0 20px}
+  .hwrap{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:24px;height:58px}
+  .brand{font-weight:650;letter-spacing:-.01em}
+  .brand span{color:var(--accent)}
+  nav{display:flex;gap:4px;margin-left:auto}
+  nav button{background:none;border:0;padding:8px 14px;border-radius:7px;cursor:pointer;
+    font:inherit;font-weight:550;color:var(--muted)}
+  nav button.on{background:var(--accent-soft);color:var(--accent)}
+  main{max-width:1080px;margin:0 auto;padding:24px 20px 80px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+  h2{font-size:18px;margin:0 0 4px}
+  h3{font-size:15px;margin:20px 0 8px}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+  .askrow{display:flex;gap:8px}
+  input[type=text],textarea,select{width:100%;padding:10px 12px;border:1px solid var(--line);
+    border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+  textarea{resize:vertical;min-height:64px}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  button.btn{background:var(--accent);color:#fff;border:0;padding:10px 18px;border-radius:8px;
+    font:inherit;font-weight:550;cursor:pointer;white-space:nowrap}
+  button.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  button.btn.sm{padding:6px 12px;font-size:13px}
+  button.btn.danger{background:#fff;color:var(--danger);border:1px solid var(--line)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+  .card{border:1px solid var(--line);border-radius:9px;padding:14px 16px;cursor:pointer;background:#fff;text-align:left}
+  .card:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .card b{display:block;font-weight:600;margin-bottom:2px}
+  .card small{color:var(--muted)}
+  .crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;margin-bottom:14px;color:var(--muted)}
+  .crumbs button{background:none;border:0;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
+  .crumbs .sep{opacity:.5}
+  .ctx{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:6px 0 4px}
+  .ctx label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px;
+    text-transform:uppercase;letter-spacing:.04em}
+  .verdict{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;
+    padding:16px 18px;background:var(--accent-soft);margin-top:16px}
+  .verdict .vtitle{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+  .verdict .vtext{font-size:17px;font-weight:600;line-height:1.4}
+  .block{margin-top:16px}
+  .block .blabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  ol.steps{margin:0;padding-left:20px}
+  ol.steps li{margin-bottom:5px}
+  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)}
+  .pill.warn{background:var(--warn-soft);color:var(--warn)}
+  .pill.draft{background:#eef0f3;color:var(--muted)}
+  .note{border-left:3px solid var(--warn);background:var(--warn-soft);padding:11px 14px;border-radius:0 8px 8px 0;font-size:14px}
+  .note.bad{border-color:var(--danger);background:var(--danger-soft)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:650}
+  tr.hit{background:var(--ok-soft)}
+  .tblwrap{overflow-x:auto}
+  .reclist{display:flex;flex-direction:column;gap:8px}
+  .rec{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:12px 14px}
+  .rec .rmain{flex:1;min-width:0}
+  .rec .rpath{font-size:12px;color:var(--muted)}
+  .rec .rname{font-weight:600}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .fld{margin-bottom:14px}
+  .fld label{display:block;font-size:12.5px;font-weight:650;margin-bottom:5px}
+  .fld .hint{font-size:12px;color:var(--muted);font-weight:400;margin-top:4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .inputrow,.rulerow{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;background:#fbfbfc}
+  .muted{color:var(--muted)}
+  .empty{text-align:center;padding:32px;color:var(--muted)}
+  .hidden{display:none}
+  .results{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  /* live question list */
+  .qgroup{margin-top:18px}
+  .qgroup .ghead{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--line);margin-bottom:2px}
+  .qrow{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);
+    padding:11px 10px;cursor:pointer;font:inherit;border-radius:6px}
+  .qrow:hover,.qrow:focus{background:var(--accent-soft);outline:none}
+  .qrow .qtext{font-weight:550}
+  .qrow .qalt{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .qrow mark{background:#fff3bf;color:inherit;padding:0 1px;border-radius:2px}
+  .qcount{font-size:12.5px;color:var(--muted);margin-top:14px}
+  /* collapsible admin sections */
+  details.sec{border:1px solid var(--line);border-radius:9px;margin-bottom:10px;background:#fbfbfc}
+  details.sec>summary{cursor:pointer;padding:12px 14px;font-weight:600;font-size:14px;
+    list-style:none;display:flex;align-items:center;gap:9px}
+  details.sec>summary::-webkit-details-marker{display:none}
+  details.sec>summary::before{content:'\25B8';color:var(--muted);font-size:11px;width:9px;flex:none}
+  details.sec[open]>summary::before{content:'\25BE'}
+  details.sec>summary:hover{background:#f2f4f6;border-radius:9px}
+  details.sec .ssum{font-weight:400;color:var(--muted);font-size:13px;margin-left:auto;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58%;text-align:right}
+  details.sec .sbody{padding:2px 14px 14px}
+  details.rule{background:#fff}
+  .bwrap{display:flex;gap:14px;flex-wrap:wrap}
+  .bcol{flex:1;min-width:320px}
+  .draftcard{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
+    padding:12px 14px;margin-bottom:10px;background:#fff}
+  .draftcard .dhead{display:flex;gap:10px;align-items:center;margin-bottom:4px}
+  .draftcard .dpath{font-size:12px;color:var(--muted)}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid #fff6;border-top-color:#fff;
+    border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  /* attachments */
+  .drop{margin-top:12px;border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;
+    cursor:pointer;background:#fbfbfc}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+  .chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:20px;
+    padding:5px 8px 5px 13px;font-size:13px;margin:8px 8px 0 0;background:#fff}
+  .chip .x{border:0;background:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:0 4px}
+  .chip .x:hover{color:var(--danger)}
+  .chip .kind{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:650}
+  /* tree preview */
+  .tree{font-size:14px;margin:4px 0 6px}
+  .tree .t1{font-weight:650;padding:5px 0}
+  .tree .t2{padding:4px 0 4px 20px;font-weight:550;color:var(--ink)}
+  .tree .t3{padding:3px 0 3px 40px;color:var(--muted)}
+  .tree .t3 b{font-weight:550;color:var(--ink)}
+  .badge-new{display:inline-block;background:var(--warn-soft);color:var(--warn);font-size:10.5px;
+    font-weight:700;letter-spacing:.05em;padding:2px 6px;border-radius:4px;margin-left:7px;vertical-align:1px}
+  .needs{background:var(--warn-soft);color:var(--warn);font-weight:600;padding:1px 5px;border-radius:4px}
+  .whoami{font-size:12.5px;color:var(--muted);text-align:right;line-height:1.3;padding-left:10px}
+  .whoami b{color:var(--ink);font-weight:600}
+  .whoami .role{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:10.5px;
+    font-weight:700;letter-spacing:.05em;padding:1px 6px;border-radius:4px;margin-left:5px}
+  .whoami .local{background:var(--warn-soft);color:var(--warn)}
+  .savebar{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:var(--ink);color:#fff;
+    padding:9px 18px;border-radius:22px;font-size:13.5px;box-shadow:0 4px 18px #0003;z-index:50}
+  .savebar.err{background:var(--danger)}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}.hwrap{gap:10px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="brand">Wisdom<span>Base</span></div>
+    <nav>
+      <button id="tabFind" class="on" onclick="go('find')">Find</button>
+      <button id="tabBrain" onclick="go('brain')">Brainstorm</button>
+      <button id="tabAdmin" onclick="go('admin')">Admin</button>
+    </nav>
+    <div id="whoami" class="whoami"></div>
+  </div>
+</header>
+
+<main>
+  <!-- ============ FIND ============ -->
+  <section id="viewFind">
+    <div class="panel">
+      <h2>What is the situation?</h2>
+      <p class="sub">Start typing and the list narrows. You do not have to guess the wording, everything it can answer is listed below.</p>
+      <div class="askrow">
+        <input type="text" id="askBox" autocomplete="off"
+               placeholder="Type anything: refund, damaged, late return, angry customer..."
+               oninput="renderQuestions()" onkeydown="if(event.key==='Enter')openTop()">
+        <button class="btn ghost" id="clearBtn" onclick="clearAsk()">Clear</button>
+      </div>
+      <div id="askResults"></div>
+    </div>
+
+    <div class="panel" id="browsePanel">
+      <div class="crumbs" id="crumbs"></div>
+      <div id="browseBody"></div>
+    </div>
+  </section>
+
+  <!-- ============ BRAINSTORM ============ -->
+  <section id="viewBrain" class="hidden">
+    <div class="panel">
+      <h2>Dump it here</h2>
+      <p class="sub">Messy is fine. Half sentences, notes to yourself, a paste out of a spreadsheet, whatever you were thinking out loud. It gets turned into draft records that you review before anything goes live.</p>
+      <textarea id="brainText" style="min-height:190px"
+        placeholder="if someone wants to cancel an order and it already shipped we cant stop it, they have to refuse delivery or send it back. if it hasnt shipped just cancel it and refund. anything over 500 tell a supervisor first&#10;&#10;also wrong address, if the customer gave us a bad address thats on them, we charge reshipping. if we typed it wrong we eat it"></textarea>
+      <div class="drop" id="dropZone" onclick="document.getElementById('attachFile').click()">
+        <b>Or attach a file</b>
+        <div class="muted" style="font-size:13px;margin-top:3px">
+          PDF, Excel, CSV, Word notes, or a photo of something handwritten. Drop it here or click to pick.</div>
+        <input type="file" id="attachFile" class="hidden" multiple
+               accept=".pdf,.xlsx,.xls,.csv,.tsv,.txt,.md,.json,.png,.jpg,.jpeg,.webp,.gif"
+               onchange="handleFiles(this.files)">
+      </div>
+      <div id="attachList"></div>
+
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="brainBtn" onclick="organize()">Organize this into records</button>
+        <button class="btn ghost" onclick="clearBrain()">Clear</button>
+      </div>
+      <div id="brainOut" style="margin-top:16px"></div>
+    </div>
+
+    <details class="sec" id="secKey">
+      <summary>Connection <span class="ssum" id="sumKey"></span></summary>
+      <div class="sbody">
+        <p class="sub">Organizing messy notes needs an Anthropic API key. It is stored in this browser only and never leaves it except to call the API directly.</p>
+        <div class="grid2" style="grid-template-columns:2fr 1fr">
+          <div class="fld"><label>API key</label>
+            <input type="password" id="apiKey" placeholder="sk-ant-..." oninput="saveKey()"></div>
+          <div class="fld"><label>Model</label>
+            <input type="text" id="apiModel" placeholder="claude-sonnet-4-5" oninput="saveKey()">
+            <div class="hint">Change this if the model name ever moves on.</div></div>
+        </div>
+        <div class="note">No key? Paste your notes to Claude in a chat instead, ask for Wisdom Base records as JSON, then use Import on the Admin tab. Same result, no key needed.</div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ ADMIN ============ -->
+  <section id="viewAdmin" class="hidden">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h2>Decision records</h2>
+          <p class="sub" style="margin:0" id="adminCount"></p>
+        </div>
+        <div class="row">
+          <button class="btn ghost sm" onclick="exportJson()">Export</button>
+          <button class="btn ghost sm" onclick="document.getElementById('importFile').click()">Import</button>
+          <input type="file" id="importFile" accept=".json" class="hidden" onchange="importJson(event)">
+          <button class="btn sm" onclick="editRecord(null)">New record</button>
+        </div>
+      </div>
+      <div class="reclist" id="adminList" style="margin-top:16px"></div>
+    </div>
+
+    <div class="panel" id="gapsPanel">
+      <h2>Unanswered questions</h2>
+      <p class="sub">Questions people asked that no approved record covered. This is your build queue.</p>
+      <div id="gapsList"></div>
+    </div>
+
+    <div class="panel hidden" id="editorPanel">
+      <h2 id="editorTitle">New record</h2>
+      <p class="sub">Layers 1 to 3 are how people navigate to it. The table underneath is where the decision actually gets made.</p>
+
+      <div class="grid2">
+        <div class="fld"><label>Department</label><input type="text" id="fDept" placeholder="Customer Service"></div>
+        <div class="fld"><label>Topic</label><input type="text" id="fTopic" placeholder="Returns and Refunds"></div>
+        <div class="fld"><label>Scenario</label><input type="text" id="fScenario" placeholder="Customer wants to return an item"></div>
+      </div>
+
+      <div class="fld">
+        <label>Trigger question</label>
+        <input type="text" id="fTrigger" placeholder="Customer wants to return an item, what do I do?">
+        <div class="hint">How an employee would actually phrase it.</div>
+      </div>
+
+      <div class="fld">
+        <label>Other ways people ask it</label>
+        <textarea id="fAliases" placeholder="send it back, wrong item arrived, they want their money back"></textarea>
+        <div class="hint">Comma separated. This is what makes the Ask box find the record. Do not skip it.</div>
+      </div>
+
+      <details class="sec" id="secInputs">
+        <summary>Context needed <span class="ssum" id="sumInputs"></span></summary>
+        <div class="sbody">
+          <p class="sub" style="margin-bottom:10px">The two or three things that change the answer. Nothing more.</p>
+          <div id="inputsWrap"></div>
+          <button class="btn ghost sm" onclick="addInput()">Add a question</button>
+        </div>
+      </details>
+
+      <details class="sec" id="secRules" open>
+        <summary>Decision table <span class="ssum" id="sumRules"></span></summary>
+        <div class="sbody">
+          <p class="sub" style="margin-bottom:10px">One row per rule, read top to bottom, first match wins. Click a rule to open it. Leave a condition on "Any" when it does not matter.</p>
+          <div id="rulesWrap"></div>
+          <button class="btn ghost sm" onclick="addRule()">Add a rule</button>
+        </div>
+      </details>
+
+      <div class="row" style="margin-top:22px;padding-top:18px;border-top:1px solid var(--line)">
+        <div class="fld" style="margin:0">
+          <label>Status</label>
+          <select id="fStatus" style="width:auto">
+            <option value="draft">Draft (not served to employees)</option>
+            <option value="approved">Approved (live)</option>
+          </select>
+        </div>
+        <div class="fld" style="margin:0;flex:1">
+          <label>Owner</label><input type="text" id="fOwner" placeholder="Ahmed">
+        </div>
+      </div>
+
+      <div id="saveWarn" style="margin-top:14px"></div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="btn" onclick="saveRecord()">Save record</button>
+        <button class="btn ghost" onclick="closeEditor()">Cancel</button>
+        <button class="btn danger" id="delBtn" onclick="deleteRecord()">Delete</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ---------------------------------------------------------------
+   Wisdom Base v1
+   Navigate by tree, decide by table.
+   Storage: localStorage. Export/import JSON to move between machines.
+----------------------------------------------------------------*/
+
+const KEY = 'wisdomBase.v1';
+const ANY = 'Any';
+
+/* ---------- seed content: the spec's Returns and Refunds records ---------- */
+function seed(){ return {
+  records: [
+    {
+      id:'wb-001',
+      dept:'Customer Service', topic:'Returns and Refunds',
+      scenario:'Customer wants to return an item',
+      trigger:'Customer wants to return an item, what do I do?',
+      aliases:['return','refund','send it back','money back','wrong item','damaged item','they want to return it','refund request'],
+      inputs:[
+        {name:'Whose fault was it?', options:[
+          {label:'Ours', hints:['our fault','our mistake','we shipped wrong','we messed up','seller error','wrong item sent']},
+          {label:'Customer', hints:['changed their mind','ordered wrong','customer fault','buyer remorse','no longer needs']},
+          {label:'Carrier', hints:['lost in transit','damaged in shipping','carrier','ups','usps','fedex']}
+        ]},
+        {name:'What is the order value?', options:[
+          {label:'Under $25', hints:['$10','$15','$20','small order','cheap','under 25']},
+          {label:'$25 to $100', hints:['$50','$75','$40','$60']},
+          {label:'Over $100', hints:['$150','$200','$500','large order','big order','expensive']}
+        ]},
+        {name:'What condition is the item in?', options:[
+          {label:'Unopened', hints:['unopened','sealed','never opened','still in box']},
+          {label:'Opened', hints:['opened','used','they opened it']},
+          {label:'Damaged', hints:['damaged','broken','cracked','defective']}
+        ]}
+      ],
+      rules:[
+        { when:['Ours','Under $25',ANY],
+          verdict:'Refund in full. Do not ask for the item back.',
+          steps:['Issue a full refund on the order.','Set the reason code to "seller error."','Cancel the shipment if it has not left the building.','Add a one line note on the order explaining what happened.'],
+          wording:'I am sorry about that, it was our mistake. I have refunded you in full and you do not need to send anything back.',
+          authority:'Any CS rep. No approval needed.',
+          escalate:'Only if this customer has had 3 or more seller error refunds in the last 90 days.'
+        },
+        { when:['Ours','$25 to $100',ANY],
+          verdict:'Refund in full and send a prepaid return label.',
+          steps:['Issue a full refund on the order.','Set the reason code to "seller error."','Email a prepaid return label.','Add a one line note on the order.'],
+          wording:'That was our error. You have been refunded in full, and I am emailing you a prepaid label so the return costs you nothing.',
+          authority:'Any CS rep. No approval needed.',
+          escalate:'Only if the customer refuses to return the item.'
+        },
+        { when:['Ours','Over $100',ANY],
+          verdict:'Refund in full, prepaid label, and flag it for a cause review.',
+          steps:['Issue a full refund on the order.','Set the reason code to "seller error."','Email a prepaid return label.','Flag the order for supervisor cause review so the root cause gets found.'],
+          wording:'That was our error and I have refunded you in full. I am sending a prepaid return label now.',
+          authority:'Any CS rep can issue the refund. The cause review is the supervisor\u2019s job, not a block on the refund.',
+          escalate:'Always flag, but never hold the customer\u2019s refund waiting on it.'
+        },
+        { when:['Customer','Under $25','Unopened'],
+          verdict:'Refund the item, keep the original shipping.',
+          steps:['Confirm the item is unopened and inside the return window.','Issue a refund for the item only, not the original shipping.','Set the reason code to "customer remorse."','Send return instructions. Return shipping is on the customer.'],
+          wording:'Happy to take that back. Once it arrives I will refund the item cost. Return shipping is on you and the original shipping is not refundable.',
+          authority:'Any CS rep. No approval needed.',
+          escalate:'If it is outside the return window, see the return window record.'
+        },
+        { when:['Customer',ANY,'Opened'],
+          verdict:'Restocking fee applies. Confirm the fee before accepting.',
+          steps:['Confirm the item is resalable.','Quote the restocking fee to the customer and get a yes before issuing the label.','Refund the item minus the restocking fee once it is received and inspected.','Set the reason code to "customer remorse, opened."'],
+          wording:'I can accept the return, but because the item has been opened there is a restocking fee. Once it is back and inspected I will refund the balance.',
+          authority:'Any CS rep once the customer agrees to the fee.',
+          escalate:'If the customer disputes the fee, hand it to a supervisor rather than waiving it yourself.'
+        },
+        { when:['Carrier',ANY,'Damaged'],
+          verdict:'Replace or refund immediately. Do not make the customer chase the carrier.',
+          steps:['Ask for a photo of the damage if you do not already have one.','Ship a replacement, or refund in full if the customer prefers.','Open the carrier claim yourself. This is our job, not the customer\u2019s.','Set the reason code to "carrier damage."'],
+          wording:'Sorry that arrived damaged. I am sending a replacement today and I will handle the carrier claim on our end.',
+          authority:'Any CS rep. No approval needed.',
+          escalate:'Only if the order value is over $500.'
+        }
+      ],
+      status:'approved', owner:'Ahmed', updated:'2026-08-26'
+    },
+    {
+      id:'wb-002',
+      dept:'Customer Service', topic:'Returns and Refunds',
+      scenario:'Return request is outside the return window',
+      trigger:'They want to return something but it is past the return window, can I still take it?',
+      aliases:['past the window','too late to return','expired return','outside return period','30 days','late return'],
+      inputs:[
+        {name:'How far past the window?', options:[
+          {label:'Under 15 days', hints:['a few days','just missed','a week late','10 days']},
+          {label:'15 to 60 days', hints:['a month late','a couple months']},
+          {label:'Over 60 days', hints:['months ago','last year','very old order']}
+        ]},
+        {name:'Is the customer a repeat buyer?', options:[
+          {label:'Yes', hints:['regular','repeat','loyal','orders all the time','good customer']},
+          {label:'No', hints:['first order','new customer','one time']}
+        ]}
+      ],
+      rules:[
+        { when:['Under 15 days',ANY],
+          verdict:'Accept it. Do not make an issue of a few days.',
+          steps:['Accept the return under the normal policy.','Note "goodwill, just outside window" on the order.'],
+          wording:'That is just outside our window, but I will take care of it for you.',
+          authority:'Any CS rep.', escalate:'None.' },
+        { when:['15 to 60 days','Yes'],
+          verdict:'Accept it as goodwill for a repeat buyer.',
+          steps:['Confirm the item is unused and resalable.','Accept the return and note "goodwill, repeat customer."'],
+          wording:'Normally this would be past our window, but you have been ordering with us a while so I will make an exception.',
+          authority:'Any CS rep.', escalate:'None.' },
+        { when:['15 to 60 days','No'],
+          verdict:'Decline politely, offer store credit instead.',
+          steps:['Explain the return window.','Offer store credit for the item value as an alternative.','If they decline the credit, close it out.'],
+          wording:'That order is past our return window so I cannot refund it, but I can offer store credit for the full amount.',
+          authority:'Any CS rep can offer the credit.', escalate:'If they push back hard, hand to a supervisor.' },
+        { when:['Over 60 days',ANY],
+          verdict:'Decline. Do not offer credit.',
+          steps:['Explain the return window clearly and politely.','Log the contact so the pattern is visible if it repeats.'],
+          wording:'I am sorry, that order is well outside our return window and I am not able to process a return on it.',
+          authority:'Any CS rep.', escalate:'Only if the customer threatens a chargeback.' }
+      ],
+      status:'approved', owner:'Ahmed', updated:'2026-08-26'
+    }
+  ],
+  gaps: []
+};}
+
+/* ================= WHERE THE RECORDS LIVE =================
+   Two modes, decided automatically at boot:
+
+   cloud  the page is served by the Worker. Records live in D1, everyone sees
+          the same ones, and a cleared browser costs you nothing. Who you are
+          comes from Cloudflare Access, and the server decides what you may do.
+   local  the file is opened straight off disk. Records live in this browser
+          only. Fine for building content on your own, not fine for a team.
+   Hiding the Admin tab is tidiness, not security. The Worker is the lock. */
+
+let MODE = 'local';
+let ME = { email: null, isAdmin: true };   // on your own machine, you are the admin
+
+const api = async (path, opts) => {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { 'content-type':'application/json', ...(opts && opts.headers) }
+  });
+  if(res.status === 401){ location.reload(); throw new Error('signed out'); }
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || ('server said ' + res.status));
+  return data;
+};
+
+let toastTimer = null;
+function toast(msg, bad){
+  clearTimeout(toastTimer);
+  let el = document.getElementById('savebar');
+  if(!el){ el = document.createElement('div'); el.id='savebar'; document.body.appendChild(el); }
+  el.className = 'savebar' + (bad?' err':'');
+  el.textContent = msg;
+  toastTimer = setTimeout(()=>el.remove(), bad ? 6000 : 2200);
+}
+
+/* ---------- state ---------- */
+let DB = load();
+function load(){
+  try{ const raw = localStorage.getItem(KEY); if(raw){ const d = JSON.parse(raw);
+    if(d && Array.isArray(d.records)){ d.gaps = d.gaps || []; return d; } } }catch(e){ console.warn('load failed', e); }
+  return seed();
+}
+function save(){
+  if(MODE === 'cloud') return;            // the server is the store, not this browser
+  try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ console.warn('save failed', e); }
+}
+
+/* pull the shared copy. non-admins are only ever sent approved records. */
+async function pullCloud(){
+  const [{records}, gapsRes] = await Promise.all([
+    api('/api/records'),
+    ME.isAdmin ? api('/api/gaps').catch(()=>({gaps:[]})) : Promise.resolve({gaps:[]})
+  ]);
+  DB = {
+    records,
+    gaps: (gapsRes.gaps||[]).map(g => ({ id:g.id, q:g.question, at:(g.asked_at||'').slice(0,10), by:g.asked_by }))
+  };
+}
+
+async function pushRecords(list){
+  const r = await api('/api/records', { method:'PUT', body: JSON.stringify(list) });
+  await pullCloud();
+  return r;
+}
+
+function renderWho(){
+  const el = document.getElementById('whoami');
+  el.innerHTML = MODE === 'cloud'
+    ? `<b>${esc(ME.email)}</b><span class="role">${ME.isAdmin ? 'ADMIN' : 'USER'}</span>`
+    : `<span class="role local">LOCAL ONLY</span>`;
+  el.title = MODE === 'cloud'
+    ? 'Records are shared and stored on the server'
+    : 'Records are saved in this browser only. Clearing it loses them.';
+  // tabs follow your role. the server enforces it regardless of what is shown.
+  document.getElementById('tabBrain').classList.toggle('hidden', !ME.isAdmin);
+  document.getElementById('tabAdmin').classList.toggle('hidden', !ME.isAdmin);
+  document.getElementById('secKey').classList.toggle('hidden', MODE === 'cloud');
+}
+
+/* ---------- helpers ---------- */
+const live = () => DB.records.filter(r => r.status === 'approved');
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uniq = a => [...new Set(a)];
+function optLabels(inp){ return (inp.options||[]).map(o => typeof o === 'string' ? o : o.label); }
+function optHints(o){ return typeof o === 'string' ? [] : (o.hints||[]); }
+
+/* ---------- rule evaluation: first match wins ---------- */
+function evaluate(rec, picks){
+  for(const rule of rec.rules){
+    let ok = true;
+    for(let i=0;i<rec.inputs.length;i++){
+      const cond = rule.when[i];
+      if(cond === undefined || cond === ANY) continue;   // wildcard
+      if(picks[i] === undefined || picks[i] === '') { ok = false; break; }  // not answered yet
+      if(picks[i] !== cond){ ok = false; break; }
+    }
+    if(ok) return rule;
+  }
+  return null;
+}
+
+/* ---------- search: score a record against a typed question ---------- */
+const STOP = new Set(['the','a','an','and','or','to','for','of','is','it','i','we','they','he','she','do','does',
+  'what','how','can','should','my','our','their','this','that','with','on','in','at','be','was','were','me','you',
+  'if','so','but','not','have','has','had','want','wants','need','needs','get','got','item','order','customer','please']);
+function tokens(s){
+  return String(s||'').toLowerCase().replace(/[^a-z0-9$ ]/g,' ').split(/\s+/)
+    .filter(w => w.length>2 && !STOP.has(w));
+}
+function scoreRecord(rec, q){
+  const ql = ' ' + String(q).toLowerCase() + ' ';
+  const qt = tokens(q);
+  let score = 0;
+  // whole-phrase alias hits are the strongest signal
+  for(const a of (rec.aliases||[])){
+    const al = String(a).toLowerCase().trim();
+    if(al && ql.includes(al)) score += 6;
+  }
+  const hay = uniq(tokens([rec.scenario, rec.topic, rec.trigger, (rec.aliases||[]).join(' ')].join(' ')));
+  for(const w of qt){ if(hay.includes(w)) score += 2; }
+  // partial stem match, weaker
+  for(const w of qt){ if(!hay.includes(w) && hay.some(h => h.startsWith(w.slice(0,4)) && w.length>4)) score += 1; }
+  return score;
+}
+
+/* ---------- smart detection: pull context answers out of the question ---------- */
+function detect(rec, q){
+  const ql = ' ' + String(q).toLowerCase() + ' ';
+  const picks = [];
+  rec.inputs.forEach((inp, i) => {
+    let found = '';
+    for(const o of (inp.options||[])){
+      const label = (typeof o === 'string') ? o : o.label;
+      const probes = [label.toLowerCase(), ...optHints(o).map(h => String(h).toLowerCase())];
+      if(probes.some(p => p && ql.includes(p))){ found = label; break; }
+    }
+    picks[i] = found;
+  });
+  return picks;
+}
+
+/* ---------- navigation state ---------- */
+let nav = { dept:null, topic:null, recId:null };
+let picks = [];
+
+function go(view){
+  for(const v of ['find','brain','admin']){
+    document.getElementById('view'+v[0].toUpperCase()+v.slice(1)).classList.toggle('hidden', view!==v);
+    document.getElementById('tab'+({find:'Find',brain:'Brain',admin:'Admin'})[v]).classList.toggle('on', view===v);
+  }
+  if(view==='find') renderFind();
+  else if(view==='admin') renderAdmin();
+  else loadKey();
+}
+
+/* ================= FIND ================= */
+function renderFind(){
+  renderCrumbs();
+  const body = document.getElementById('browseBody');
+  const recs = live();
+  // the question list stays on screen whenever we are not sitting inside an answer
+  if(!nav.recId) renderQuestions();
+
+  if(nav.recId){
+    // only approved records are ever served to employees, even if we are standing on one
+    const rec = recs.find(r => r.id===nav.recId);
+    if(rec){ body.innerHTML = recordView(rec); wireCtx(rec); return; }
+    nav.recId = null; picks = [];
+  }
+  if(nav.topic){
+    const list = recs.filter(r => r.dept===nav.dept && r.topic===nav.topic);
+    body.innerHTML = list.length
+      ? '<div class="cards">' + list.map(r =>
+          `<button class="card" onclick="openRec('${r.id}')"><b>${esc(r.scenario)}</b><small>${esc(r.trigger)}</small></button>`).join('') + '</div>'
+      : '<div class="empty">No approved scenarios here yet.</div>';
+    return;
+  }
+  if(nav.dept){
+    const topics = uniq(recs.filter(r => r.dept===nav.dept).map(r => r.topic));
+    body.innerHTML = topics.length
+      ? '<div class="cards">' + topics.map(t => {
+          const n = recs.filter(r => r.dept===nav.dept && r.topic===t).length;
+          return `<button class="card" onclick="openTopic(${JSON.stringify(t).replace(/"/g,'&quot;')})"><b>${esc(t)}</b><small>${n} scenario${n===1?'':'s'}</small></button>`;
+        }).join('') + '</div>'
+      : '<div class="empty">No approved topics in this department yet.</div>';
+    return;
+  }
+  const depts = uniq(recs.map(r => r.dept));
+  body.innerHTML = depts.length
+    ? '<div class="cards">' + depts.map(d => {
+        const n = recs.filter(r => r.dept===d).length;
+        return `<button class="card" onclick="openDept(${JSON.stringify(d).replace(/"/g,'&quot;')})"><b>${esc(d)}</b><small>${n} scenario${n===1?'':'s'}</small></button>`;
+      }).join('') + '</div>'
+    : '<div class="empty">Nothing approved yet. Add records in the Admin tab.</div>';
+}
+
+function renderCrumbs(){
+  const c = document.getElementById('crumbs');
+  const parts = ['<button onclick="resetNav()">All departments</button>'];
+  if(nav.dept) parts.push(`<span class="sep">/</span><button onclick="openDept(${JSON.stringify(nav.dept).replace(/"/g,'&quot;')})">${esc(nav.dept)}</button>`);
+  if(nav.topic) parts.push(`<span class="sep">/</span><button onclick="openTopic(${JSON.stringify(nav.topic).replace(/"/g,'&quot;')})">${esc(nav.topic)}</button>`);
+  if(nav.recId){ const r = DB.records.find(x=>x.id===nav.recId);
+    if(r) parts.push(`<span class="sep">/</span><span>${esc(r.scenario)}</span>`); }
+  c.innerHTML = parts.join('');
+}
+
+function resetNav(){ nav={dept:null,topic:null,recId:null}; picks=[]; renderFind(); }
+function openDept(d){ nav={dept:d,topic:null,recId:null}; picks=[]; renderFind(); }
+function openTopic(t){ nav.topic=t; nav.recId=null; picks=[]; renderFind(); }
+function openRec(id, prefill){
+  const r = DB.records.find(x=>x.id===id); if(!r) return;
+  nav = { dept:r.dept, topic:r.topic, recId:id };
+  picks = prefill || r.inputs.map(()=> '');
+  logLookup(r);
+  document.getElementById('askResults').innerHTML='';
+  renderFind();
+  document.getElementById('browsePanel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function recordView(rec){
+  const ctx = rec.inputs.map((inp,i) => {
+    const opts = optLabels(inp).map(l =>
+      `<option value="${esc(l)}"${picks[i]===l?' selected':''}>${esc(l)}</option>`).join('');
+    return `<div><label>${esc(inp.name)}</label>
+      <select data-i="${i}" onchange="setPick(this)"><option value="">Choose...</option>${opts}</select></div>`;
+  }).join('');
+
+  const answered = rec.inputs.length===0 || picks.filter(p=>p).length===rec.inputs.length;
+  const rule = evaluate(rec, picks);
+
+  let out = '';
+  if(!answered){
+    out = `<div class="note">Answer the questions above and the decision appears here.</div>`;
+  } else if(!rule){
+    out = `<div class="note bad"><b>No rule covers this combination.</b><br>
+      Do not guess. Ask a supervisor, then add a rule for it in the Admin tab so nobody has to ask twice.</div>`;
+  } else {
+    out = `
+      <div class="verdict">
+        <div class="vtitle">Decision</div>
+        <div class="vtext">${esc(rule.verdict)}</div>
+      </div>
+      ${rule.steps && rule.steps.length ? `<div class="block"><div class="blabel">Steps</div>
+        <ol class="steps">${rule.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>`:''}
+      ${rule.wording ? `<div class="block"><div class="blabel">What to say</div>
+        <div class="note">${esc(rule.wording)}</div></div>`:''}
+      <div class="block"><div class="blabel">Your authority</div><div>${esc(rule.authority||'Not set')}</div></div>
+      <div class="block"><div class="blabel">Escalate when</div><div>${esc(rule.escalate||'Not set')}</div></div>
+      <div class="block muted" style="font-size:12.5px">Record ${esc(rec.id)} &middot; owner ${esc(rec.owner||'unassigned')} &middot; updated ${esc(rec.updated||'')}</div>`;
+  }
+
+  const tbl = `
+    <div class="block"><div class="blabel">Full decision table</div>
+    <div class="tblwrap"><table><thead><tr>
+      ${rec.inputs.map(i=>`<th>${esc(i.name)}</th>`).join('')}<th>Decision</th></tr></thead><tbody>
+      ${rec.rules.map(r=>{
+        const hit = rule && r===rule;
+        return `<tr class="${hit?'hit':''}">${rec.inputs.map((_,i)=>`<td>${esc(r.when[i]||ANY)}</td>`).join('')}<td>${esc(r.verdict)}</td></tr>`;
+      }).join('')}
+    </tbody></table></div></div>`;
+
+  return `<h2>${esc(rec.scenario)}</h2><p class="sub">${esc(rec.trigger)}</p>
+    <div class="ctx">${ctx}</div>${out}${tbl}`;
+}
+
+function setPick(sel){ picks[+sel.dataset.i] = sel.value; renderFind(); }
+function wireCtx(){ /* selects are re-rendered each pass, nothing to wire */ }
+
+/* ---------- live question list ----------
+   Nobody has to guess the trigger phrasing. Every answerable question is on
+   screen by default, and typing narrows it instead of submitting a search. */
+
+let lastQuery = '';
+const SHOW_WHEN_EMPTY = 12;
+
+function highlight(text, q){
+  const words = tokens(q);
+  let out = esc(text);
+  for(const w of uniq(words)){
+    if(w.length < 3) continue;
+    out = out.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'ig'), '<mark>$1</mark>');
+  }
+  return out;
+}
+
+function renderQuestions(){
+  const q = document.getElementById('askBox').value.trim();
+  lastQuery = q;
+  const box = document.getElementById('askResults');
+  document.getElementById('clearBtn').classList.toggle('hidden', !q);
+
+  const all = live();
+  if(!all.length){ box.innerHTML = '<div class="empty">Nothing approved yet.</div>'; return; }
+
+  let list, truncated = 0, heading;
+
+  if(!q){
+    // nothing typed: show what the system can answer, grouped by where it lives
+    list = all;
+    if(list.length > SHOW_WHEN_EMPTY){ truncated = list.length - SHOW_WHEN_EMPTY; list = list.slice(0, SHOW_WHEN_EMPTY); }
+    heading = 'Questions this can answer';
+  } else {
+    const scored = all.map(r => ({r, s:scoreRecord(r,q)})).sort((a,b)=>b.s-a.s);
+    const hits = scored.filter(x => x.s > 0);
+    if(hits.length){
+      list = hits.map(x=>x.r);
+      heading = hits.length === 1 ? '1 match' : hits.length + ' matches';
+    } else {
+      // never dead-end: show the closest few anyway and say so
+      list = scored.slice(0,3).map(x=>x.r);
+      heading = 'No direct match, closest scenarios';
+    }
+  }
+
+  const byPath = {};
+  for(const r of list){ const k = r.dept + ' › ' + r.topic; (byPath[k] = byPath[k] || []).push(r); }
+
+  let html = '';
+  if(q && heading.startsWith('No direct match')){
+    html += `<div class="note" style="margin-top:14px"><b>Nothing matches "${esc(q)}" directly.</b><br>
+      Try a shorter word, pick the closest one below, or press Enter to log it so a record gets written for it.</div>`;
+  }
+  html += `<div class="qgroup"><div class="ghead">${esc(heading)}</div>` +
+    Object.keys(byPath).map(k =>
+      byPath[k].map(r => {
+        // show the phrasings that actually matched first, so the row explains why it is here
+        let aliasList = [...(r.aliases||[])];
+        if(q){
+          const ql = q.toLowerCase(), qt = tokens(q);
+          const hit = a => { const al = String(a).toLowerCase();
+            return (ql.includes(al) || qt.some(w => al.includes(w))) ? 1 : 0; };
+          aliasList.sort((a,b) => hit(b) - hit(a));
+        }
+        const alts = aliasList.slice(0,5).join(', ');
+        return `<button class="qrow" onclick="pickQuestion('${r.id}')">
+          <div class="qtext">${q ? highlight(r.trigger || r.scenario, q) : esc(r.trigger || r.scenario)}</div>
+          <div class="qalt">${esc(k)}${alts ? ' &middot; also: ' + (q ? highlight(alts,q) : esc(alts)) : ''}</div>
+        </button>`;
+      }).join('')
+    ).join('') + '</div>';
+
+  if(truncated) html += `<div class="qcount">and ${truncated} more. Start typing to narrow the list.</div>`;
+  box.innerHTML = html;
+}
+
+function pickQuestion(id){
+  const rec = DB.records.find(r=>r.id===id); if(!rec) return;
+  // carry whatever we can read out of what they typed into the context answers
+  const detected = lastQuery ? detect(rec, lastQuery) : rec.inputs.map(()=> '');
+  openRec(id, detected);
+  const filled = detected.filter(Boolean).length, total = rec.inputs.length;
+  if(filled && filled < total){
+    document.getElementById('askResults').innerHTML =
+      `<div class="note">I picked up ${filled} of ${total} details from what you typed. Confirm the rest below.</div>`;
+  }
+}
+
+function openTop(){
+  const q = document.getElementById('askBox').value.trim();
+  if(!q) return;
+  const first = document.querySelector('#askResults .qrow');
+  const anyHit = live().some(r => scoreRecord(r,q) > 0);
+  if(!anyHit){
+    logGap(q);
+    document.getElementById('askResults').innerHTML =
+      `<div class="note bad"><b>Logged.</b> No approved decision covers "${esc(q)}".<br>
+       Ask a supervisor, and it is now in the Admin build queue so nobody has to ask twice.</div>`;
+    return;
+  }
+  if(first) first.click();
+}
+
+function clearAsk(){
+  // Clear means clear. Box empties AND the browse panel goes back to the top,
+  // so nobody is left staring at a half-drilled path they did not choose.
+  document.getElementById('askBox').value = '';
+  lastQuery = '';
+  nav = { dept:null, topic:null, recId:null };
+  picks = [];
+  renderFind();
+  document.getElementById('askBox').focus();
+}
+
+function logGap(q){
+  if(MODE === 'cloud'){
+    api('/api/gaps', {method:'POST', body:JSON.stringify({question:q})}).catch(()=>{});
+    return;
+  }
+  DB.gaps.unshift({ q, at:new Date().toISOString().slice(0,10) });
+  DB.gaps = DB.gaps.slice(0,50);
+  save();
+}
+
+/* so you can prove escalations actually dropped, rather than assume it */
+function logLookup(rec){
+  if(MODE !== 'cloud') return;
+  api('/api/lookups', {method:'POST',
+    body:JSON.stringify({recordId:rec.id, scenario:rec.scenario})}).catch(()=>{});
+}
+
+/* ================= ADMIN ================= */
+let editing = null;
+
+function renderAdmin(){
+  const n = DB.records.length, a = live().length;
+  document.getElementById('adminCount').textContent = `${n} record${n===1?'':'s'}, ${a} approved and live`;
+
+  document.getElementById('adminList').innerHTML = n ? DB.records.map(r => `
+    <div class="rec">
+      <div class="rmain">
+        <div class="rpath">${esc(r.dept)} &rsaquo; ${esc(r.topic)}</div>
+        <div class="rname">${esc(r.scenario)}</div>
+      </div>
+      <span class="pill ${r.status==='approved'?'ok':'draft'}">${r.status==='approved'?'Approved':'Draft'}</span>
+      <span class="muted" style="font-size:12.5px">${r.rules.length} rule${r.rules.length===1?'':'s'}</span>
+      <button class="btn ghost sm" onclick="editRecord('${r.id}')">Edit</button>
+    </div>`).join('') : '<div class="empty">No records yet.</div>';
+
+  document.getElementById('gapsList').innerHTML = DB.gaps.length
+    ? DB.gaps.map((g,i) => `<div class="rec"><div class="rmain"><div class="rname">${esc(g.q)}</div>
+        <div class="rpath">asked ${esc(g.at)}</div></div>
+        <button class="btn ghost sm" onclick="clearGap(${i})">Done</button></div>`).join('')
+    : '<div class="empty">Nothing outstanding. Every question asked so far had an answer.</div>';
+}
+
+function clearGap(i){
+  const g = DB.gaps[i];
+  if(MODE === 'cloud' && g && g.id != null){
+    api('/api/gaps/'+g.id, {method:'DELETE'}).then(pullCloud).then(renderAdmin).catch(e=>toast(e.message,true));
+    return;
+  }
+  DB.gaps.splice(i,1); save(); renderAdmin();
+}
+
+function blankRec(){ return { id:'wb-'+Date.now().toString(36), dept:'', topic:'', scenario:'', trigger:'',
+  aliases:[], inputs:[], rules:[], status:'draft', owner:'', updated:new Date().toISOString().slice(0,10) }; }
+
+function editRecord(id){
+  editing = id ? JSON.parse(JSON.stringify(DB.records.find(r=>r.id===id))) : blankRec();
+  document.getElementById('editorTitle').textContent = id ? 'Edit record' : 'New record';
+  document.getElementById('delBtn').classList.toggle('hidden', !id);
+  document.getElementById('fDept').value = editing.dept;
+  document.getElementById('fTopic').value = editing.topic;
+  document.getElementById('fScenario').value = editing.scenario;
+  document.getElementById('fTrigger').value = editing.trigger;
+  document.getElementById('fAliases').value = (editing.aliases||[]).join(', ');
+  document.getElementById('fStatus').value = editing.status;
+  document.getElementById('fOwner').value = editing.owner||'';
+  document.getElementById('saveWarn').innerHTML = '';
+  drawInputs(); drawRules();
+  document.getElementById('editorPanel').classList.remove('hidden');
+  document.getElementById('editorPanel').scrollIntoView({behavior:'smooth'});
+}
+function closeEditor(){ editing=null; document.getElementById('editorPanel').classList.add('hidden'); }
+
+function drawInputs(){
+  document.getElementById('inputsWrap').innerHTML = editing.inputs.map((inp,i)=>`
+    <div class="inputrow">
+      <div class="row" style="margin-bottom:8px">
+        <input type="text" style="flex:1" value="${esc(inp.name)}" placeholder="Whose fault was it?"
+               oninput="editing.inputs[${i}].name=this.value">
+        <button class="btn danger sm" onclick="delInput(${i})">Remove</button>
+      </div>
+      <div class="fld" style="margin:0">
+        <label style="font-weight:550;color:var(--muted)">Possible answers</label>
+        <input type="text" value="${esc(optLabels(inp).join(', '))}" placeholder="Ours, Customer, Carrier"
+               oninput="setOpts(${i}, this.value)">
+        <div class="hint">Comma separated. Changing these resets the matching column in the table below.</div>
+      </div>
+    </div>`).join('') || '<div class="muted" style="font-size:13.5px;margin-bottom:10px">No context questions yet. Add one if the answer depends on the details.</div>';
+}
+function addInput(){ editing.inputs.push({name:'', options:[]}); editing.rules.forEach(r=>r.when.push(ANY)); drawInputs(); drawRules(); }
+function delInput(i){ editing.inputs.splice(i,1); editing.rules.forEach(r=>r.when.splice(i,1)); drawInputs(); drawRules(); }
+function setOpts(i, csv){
+  const labels = csv.split(',').map(s=>s.trim()).filter(Boolean);
+  const old = editing.inputs[i].options||[];
+  editing.inputs[i].options = labels.map(l => {
+    const prev = old.find(o => (typeof o==='string'?o:o.label) === l);
+    return prev && typeof prev==='object' ? prev : {label:l, hints:[]};
+  });
+  drawRules();
+}
+
+function drawRules(){
+  document.getElementById('sumRules').textContent =
+    editing.rules.length ? editing.rules.length + (editing.rules.length===1?' rule':' rules') : 'none yet';
+  document.getElementById('sumInputs').textContent =
+    editing.inputs.length ? editing.inputs.map(i=>i.name||'unnamed').join(', ') : 'none yet';
+
+  document.getElementById('rulesWrap').innerHTML = editing.rules.map((r,ri)=>{
+    const cond = editing.inputs.map((_,ii)=> r.when[ii]||ANY).filter(v=>v!==ANY).join(' + ') || 'any situation';
+    return `
+    <details class="sec rule">
+      <summary>Rule ${ri+1}: ${esc(cond)}<span class="ssum">${esc(r.verdict||'no decision written yet')}</span></summary>
+      <div class="sbody">
+      <div class="row" style="justify-content:flex-end;margin-bottom:6px">
+        <button class="btn danger sm" onclick="delRule(${ri})">Remove rule</button>
+      </div>
+      <div class="ctx" style="margin-top:0">
+        ${editing.inputs.map((inp,ii)=>`<div><label>${esc(inp.name||'Question '+(ii+1))}</label>
+          <select onchange="editing.rules[${ri}].when[${ii}]=this.value">
+            <option value="${ANY}"${(r.when[ii]||ANY)===ANY?' selected':''}>${ANY}</option>
+            ${optLabels(inp).map(l=>`<option value="${esc(l)}"${r.when[ii]===l?' selected':''}>${esc(l)}</option>`).join('')}
+          </select></div>`).join('')}
+      </div>
+      <div class="fld" style="margin-top:12px;margin-bottom:10px"><label>Decision</label>
+        <input type="text" value="${esc(r.verdict)}" placeholder="Refund in full. Do not ask for the item back."
+               oninput="editing.rules[${ri}].verdict=this.value"></div>
+      <div class="fld" style="margin-bottom:10px"><label>Steps</label>
+        <textarea placeholder="One step per line" oninput="editing.rules[${ri}].steps=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)">${esc((r.steps||[]).join('\n'))}</textarea></div>
+      <div class="fld" style="margin-bottom:10px"><label>What to say to the customer</label>
+        <textarea oninput="editing.rules[${ri}].wording=this.value">${esc(r.wording||'')}</textarea></div>
+      <div class="row">
+        <div class="fld" style="flex:1;margin:0"><label>Who can do this alone</label>
+          <input type="text" value="${esc(r.authority||'')}" placeholder="Any CS rep. No approval needed."
+                 oninput="editing.rules[${ri}].authority=this.value"></div>
+        <div class="fld" style="flex:1;margin:0"><label>Escalate when</label>
+          <input type="text" value="${esc(r.escalate||'')}" placeholder="Only if..."
+                 oninput="editing.rules[${ri}].escalate=this.value"></div>
+      </div>
+      </div>
+    </details>`;}).join('') || '<div class="muted" style="font-size:13.5px;margin-bottom:10px">No rules yet. Add at least one.</div>';
+}
+function addRule(){ editing.rules.push({ when: editing.inputs.map(()=>ANY), verdict:'', steps:[], wording:'', authority:'', escalate:'' }); drawRules(); }
+function delRule(i){ editing.rules.splice(i,1); drawRules(); }
+
+function saveRecord(){
+  editing.dept = document.getElementById('fDept').value.trim();
+  editing.topic = document.getElementById('fTopic').value.trim();
+  editing.scenario = document.getElementById('fScenario').value.trim();
+  editing.trigger = document.getElementById('fTrigger').value.trim();
+  editing.aliases = document.getElementById('fAliases').value.split(',').map(s=>s.trim()).filter(Boolean);
+  editing.status = document.getElementById('fStatus').value;
+  editing.owner = document.getElementById('fOwner').value.trim();
+  editing.updated = new Date().toISOString().slice(0,10);
+
+  const warn = document.getElementById('saveWarn');
+  const problems = [];
+  if(!editing.dept || !editing.topic || !editing.scenario) problems.push('Department, topic and scenario are all required.');
+  if(!editing.rules.length) problems.push('A record with no rules cannot answer anything. Add at least one rule.');
+  if(editing.rules.some(r => !r.verdict.trim())) problems.push('Every rule needs a decision written in it.');
+  if(editing.status==='approved' && !editing.aliases.length)
+    problems.push('An approved record with no alternate phrasings will be very hard to find by asking. Add a few.');
+
+  // duplicate prevention
+  const dupe = DB.records.find(r => r.id!==editing.id &&
+    r.dept.toLowerCase()===editing.dept.toLowerCase() &&
+    r.topic.toLowerCase()===editing.topic.toLowerCase() &&
+    r.scenario.toLowerCase()===editing.scenario.toLowerCase());
+  if(dupe) problems.push('A record already exists at this exact path. Edit that one instead of creating a second.');
+
+  if(problems.length){
+    warn.innerHTML = `<div class="note bad"><b>Not saved.</b><ul style="margin:6px 0 0;padding-left:18px">
+      ${problems.map(p=>`<li>${esc(p)}</li>`).join('')}</ul></div>`;
+    return;
+  }
+
+  if(MODE === 'cloud'){
+    pushRecords([editing])
+      .then(res => {
+        if(res.rejected && res.rejected.length){
+          warn.innerHTML = `<div class="note bad"><b>Not saved.</b> ${esc(res.rejected[0].problem)}</div>`;
+          renderAdmin(); return;
+        }
+        toast('Saved for everyone'); closeEditor(); renderAdmin();
+      })
+      .catch(e => { warn.innerHTML = `<div class="note bad"><b>Not saved.</b> ${esc(e.message)}</div>`; });
+    return;
+  }
+
+  const idx = DB.records.findIndex(r => r.id===editing.id);
+  if(idx>=0) DB.records[idx] = editing; else DB.records.push(editing);
+  save(); closeEditor(); renderAdmin();
+}
+
+function deleteRecord(){
+  const id = editing.id;
+  if(MODE === 'cloud'){
+    api('/api/records/'+encodeURIComponent(id), {method:'DELETE'})
+      .then(pullCloud)
+      .then(()=>{ toast('Deleted'); closeEditor(); renderAdmin(); })
+      .catch(e => toast(e.message, true));
+    return;
+  }
+  const idx = DB.records.findIndex(r=>r.id===id);
+  if(idx>=0){ DB.records.splice(idx,1); save(); }
+  closeEditor(); renderAdmin();
+}
+
+/* ================= BRAINSTORM =================
+   Messy notes in, draft records out. Nothing it produces goes live:
+   everything lands as a draft for you to read, fix and approve. */
+
+const KEYSTORE = 'wisdomBase.key';
+function loadKey(){
+  try{ const s = JSON.parse(localStorage.getItem(KEYSTORE)||'{}');
+    document.getElementById('apiKey').value = s.key||'';
+    document.getElementById('apiModel').value = s.model||'claude-sonnet-4-5';
+    document.getElementById('sumKey').textContent = s.key ? 'key saved in this browser' : 'no key set';
+    document.getElementById('secKey').open = !s.key;
+  }catch(e){ /* first run */ }
+}
+function saveKey(){
+  const s = { key: document.getElementById('apiKey').value.trim(),
+              model: document.getElementById('apiModel').value.trim()||'claude-sonnet-4-5' };
+  localStorage.setItem(KEYSTORE, JSON.stringify(s));
+  document.getElementById('sumKey').textContent = s.key ? 'key saved in this browser' : 'no key set';
+}
+
+const SCHEMA_NOTE = `Return ONLY a JSON array, no prose, no markdown fence. Each element:
+{"dept":str,"topic":str,"scenario":str,"trigger":str,"aliases":[str],
+ "inputs":[{"name":str,"options":[{"label":str,"hints":[str]}]}],
+ "rules":[{"when":[str],"verdict":str,"steps":[str],"wording":str,"authority":str,"escalate":str}]}
+
+Rules:
+- "when" has one entry per input, in the same order. Use "Any" where the value does not matter.
+- Order rules most specific first. First match wins.
+- Keep inputs to the 2 or 3 things that actually change the answer.
+- verdict is one decisive sentence. steps are what the employee does, in order.
+- wording is what they say to the customer, in plain human language.
+- authority says who can do this without approval. escalate says when to go to a supervisor.
+- If the notes do not state a threshold or a number, write the field as "NEEDS DECISION: <the question>" rather than inventing a policy.
+- Do not invent scenarios the notes do not mention.`;
+
+let drafts = [];
+let attachments = [];   // {name, kind:'text'|'pdf'|'image', text?, b64?, media?}
+
+/* ---------- attachments ----------
+   PDFs and photos go to the model as they are. Spreadsheets are turned into
+   text here first, because a model reads rows better than it reads a binary. */
+
+const MAX_BYTES = 15 * 1024 * 1024;
+
+function fileKind(name){
+  const e = name.toLowerCase().split('.').pop();
+  if(e === 'pdf') return 'pdf';
+  if(['png','jpg','jpeg','webp','gif'].includes(e)) return 'image';
+  if(['xlsx','xls'].includes(e)) return 'sheet';
+  return 'text';   // csv, tsv, txt, md, json and anything else we try as text
+}
+const readAs = (f, how) => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(r.result); r.onerror = () => rej(new Error('could not read ' + f.name));
+  how === 'b64' ? r.readAsDataURL(f) : how === 'buf' ? r.readAsArrayBuffer(f) : r.readAsText(f);
+});
+
+let sheetJsLoading = null;
+function loadSheetJs(){
+  if(window.XLSX) return Promise.resolve();
+  if(sheetJsLoading) return sheetJsLoading;
+  sheetJsLoading = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = res;
+    s.onerror = () => rej(new Error('could not load the spreadsheet reader (needs internet). Save the sheet as CSV and attach that instead.'));
+    document.head.appendChild(s);
+  });
+  return sheetJsLoading;
+}
+
+async function handleFiles(files){
+  for(const f of Array.from(files||[])){
+    if(f.size > MAX_BYTES){
+      attachments.push({name:f.name, kind:'error', text:'too big, over 15MB'});
+      continue;
+    }
+    const kind = fileKind(f.name);
+    try{
+      if(kind === 'pdf' || kind === 'image'){
+        const url = await readAs(f, 'b64');
+        attachments.push({ name:f.name, kind, b64:url.split(',')[1],
+          media: kind==='pdf' ? 'application/pdf' : (f.type || 'image/png') });
+      } else if(kind === 'sheet'){
+        await loadSheetJs();
+        const wb = XLSX.read(await readAs(f,'buf'), {type:'array'});
+        const text = wb.SheetNames.map(n =>
+          'Sheet: ' + n + '\n' + XLSX.utils.sheet_to_csv(wb.Sheets[n])).join('\n\n');
+        attachments.push({ name:f.name, kind:'text', text });
+      } else {
+        attachments.push({ name:f.name, kind:'text', text: await readAs(f,'text') });
+      }
+    }catch(e){
+      attachments.push({ name:f.name, kind:'error', text:e.message });
+    }
+  }
+  document.getElementById('attachFile').value = '';
+  renderAttachments();
+}
+
+function renderAttachments(){
+  const label = {pdf:'PDF', image:'photo', text:'text', error:'could not read'};
+  document.getElementById('attachList').innerHTML = attachments.map((a,i) =>
+    `<span class="chip"><span class="kind">${label[a.kind]||a.kind}</span>${esc(a.name)}
+      ${a.kind==='error'?`<span class="muted">(${esc(a.text)})</span>`:''}
+      <button class="x" onclick="dropAttachment(${i})" title="Remove">&times;</button></span>`).join('');
+}
+function dropAttachment(i){ attachments.splice(i,1); renderAttachments(); }
+function clearBrain(){
+  document.getElementById('brainText').value = '';
+  attachments = []; drafts = [];
+  renderAttachments();
+  document.getElementById('brainOut').innerHTML = '';
+}
+
+(function wireDrop(){
+  const z = document.getElementById('dropZone');
+  ['dragenter','dragover'].forEach(ev => z.addEventListener(ev, e => {
+    e.preventDefault(); z.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => z.addEventListener(ev, e => {
+    e.preventDefault(); z.classList.remove('over'); }));
+  z.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+})();
+
+async function organize(){
+  const text = document.getElementById('brainText').value.trim();
+  const out = document.getElementById('brainOut');
+  const usable = attachments.filter(a => a.kind !== 'error');
+  if(!text && !usable.length){ out.innerHTML = '<div class="note">Nothing to organize yet. Type something or attach a file.</div>'; return; }
+
+  const s = JSON.parse(localStorage.getItem(KEYSTORE)||'{}');
+  if(MODE !== 'cloud' && !s.key){
+    document.getElementById('secKey').open = true;
+    out.innerHTML = `<div class="note bad"><b>No API key set.</b> Open Connection below and paste one,
+      or paste these notes to Claude in a chat, ask for Wisdom Base records as JSON, and use Import on the Admin tab.</div>`;
+    return;
+  }
+
+  const btn = document.getElementById('brainBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Reading your notes...';
+  out.innerHTML = '';
+
+  const known = uniq(DB.records.map(r => r.dept + ' > ' + r.topic)).join('; ') || 'none yet';
+  const textFiles = usable.filter(a => a.kind === 'text');
+  const binFiles  = usable.filter(a => a.kind === 'pdf' || a.kind === 'image');
+
+  const prompt = `You turn an operator's messy notes into decision records for an internal e-commerce decision system.
+
+Departments and topics already in the system: ${known}
+Reuse an existing department and topic when the note fits one. Only create a new one when it genuinely does not.
+
+${SCHEMA_NOTE}
+
+${binFiles.length ? 'Some of the source material is attached as files above. Read them as part of the notes.\n' : ''}
+The notes:
+"""
+${text || '(nothing typed, use the attached files)'}
+"""
+${textFiles.map(a => `\nFile "${a.name}":\n"""\n${a.text.slice(0, 60000)}\n"""`).join('')}`;
+
+  // files first, instruction last: the model reads the material then the job
+  const content = [
+    ...binFiles.map(a => a.kind === 'pdf'
+      ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:a.b64 } }
+      : { type:'image',    source:{ type:'base64', media_type:a.media,           data:a.b64 } }),
+    { type:'text', text: prompt }
+  ];
+
+  try{
+    let raw;
+    if(MODE === 'cloud'){
+      // the key stays on the Worker. this browser never sees it.
+      raw = (await api('/api/organize', {method:'POST', body:JSON.stringify({content})})).text || '';
+    } else {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{ 'content-type':'application/json', 'x-api-key':s.key,
+                  'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ model: s.model||'claude-sonnet-4-5', max_tokens: 8000,
+                               messages:[{role:'user', content}] })
+      });
+      if(!res.ok){ throw new Error('API said ' + res.status + ': ' + (await res.text()).slice(0,200)); }
+      raw = ((await res.json()).content||[]).map(c=>c.text||'').join('');
+    }
+    raw = raw.trim();
+    raw = raw.replace(/^```(?:json)?/,'').replace(/```$/,'').trim();
+    const arr = JSON.parse(raw);
+    if(!Array.isArray(arr)) throw new Error('did not come back as a list');
+    drafts = arr.map((d,i) => normalizeDraft(d,i));
+    renderDrafts();
+  }catch(e){
+    out.innerHTML = `<div class="note bad"><b>Could not organize that.</b><br>${esc(e.message)}</div>`;
+  }finally{
+    btn.disabled = false; btn.textContent = 'Organize this into records';
+  }
+}
+
+function normalizeDraft(d,i){
+  const inputs = (d.inputs||[]).map(inp => ({
+    name: String(inp.name||''),
+    options: (inp.options||[]).map(o => typeof o==='string' ? {label:o,hints:[]}
+             : {label:String(o.label||''), hints:(o.hints||[]).map(String)})
+  }));
+  return {
+    id:'wb-'+Date.now().toString(36)+'-'+i,
+    dept:String(d.dept||'Unsorted'), topic:String(d.topic||'Unsorted'),
+    scenario:String(d.scenario||'Untitled'), trigger:String(d.trigger||d.scenario||''),
+    aliases:(d.aliases||[]).map(String), inputs,
+    rules:(d.rules||[]).map(r => ({
+      when: inputs.map((_,ii)=> String((r.when||[])[ii] ?? ANY)),
+      verdict:String(r.verdict||''), steps:(r.steps||[]).map(String),
+      wording:String(r.wording||''), authority:String(r.authority||''), escalate:String(r.escalate||'')
+    })),
+    status:'draft', owner:'', updated:new Date().toISOString().slice(0,10)
+  };
+}
+
+const marks = s => esc(s).replace(/NEEDS DECISION:?/g, '<span class="needs">NEEDS DECISION</span>');
+const isDupe = d => DB.records.some(r => r.dept.toLowerCase()===d.dept.toLowerCase()
+  && r.topic.toLowerCase()===d.topic.toLowerCase() && r.scenario.toLowerCase()===d.scenario.toLowerCase());
+
+/* what the hierarchy will look like once these are added, with new branches flagged */
+function treePreview(){
+  const existingDepts  = new Set(DB.records.map(r => r.dept.toLowerCase()));
+  const existingTopics = new Set(DB.records.map(r => (r.dept+'>'+r.topic).toLowerCase()));
+  const byDept = {};
+  for(const d of drafts){ (byDept[d.dept] = byDept[d.dept] || {})[d.topic] =
+    (byDept[d.dept][d.topic] || []).concat([d]); }
+
+  return '<div class="tree">' + Object.keys(byDept).map(dep => {
+    const newDept = !existingDepts.has(dep.toLowerCase());
+    return `<div class="t1">${esc(dep)}${newDept?'<span class="badge-new">NEW DEPARTMENT</span>':''}</div>` +
+      Object.keys(byDept[dep]).map(top => {
+        const newTopic = !existingTopics.has((dep+'>'+top).toLowerCase());
+        return `<div class="t2">${esc(top)}${newTopic?'<span class="badge-new">NEW TOPIC</span>':''}</div>` +
+          byDept[dep][top].map(d => `<div class="t3"><b>${esc(d.scenario)}</b>
+            ${isDupe(d)?'<span class="badge-new">ALREADY EXISTS</span>':''}
+            <span class="muted"> &middot; ${d.rules.length} rule${d.rules.length===1?'':'s'}</span></div>`).join('');
+      }).join('');
+  }).join('') + '</div>';
+}
+
+function renderDrafts(){
+  const out = document.getElementById('brainOut');
+  if(!drafts.length){ out.innerHTML = '<div class="note">Nothing came back from those notes.</div>'; return; }
+
+  const gapCount = drafts.reduce((n,d) => n + JSON.stringify(d.rules).split('NEEDS DECISION').length-1, 0);
+  const newCount = drafts.filter(d => !isDupe(d)).length;
+
+  out.innerHTML = `
+    <div class="row" style="justify-content:space-between;margin-bottom:6px">
+      <b>${drafts.length} draft record${drafts.length===1?'':'s'}</b>
+      <button class="btn sm" onclick="importDrafts()">Add ${newCount} as draft${newCount===1?'':'s'}</button>
+    </div>
+
+    <h3 style="margin:16px 0 2px">Where these land</h3>
+    <p class="sub" style="margin-bottom:6px">This is the tree an employee will click down through.</p>
+    ${treePreview()}
+
+    ${gapCount ? `<div class="note" style="margin:14px 0"><b>${gapCount} thing${gapCount===1?'':'s'} your notes did not decide.</b>
+      Marked NEEDS DECISION rather than made up. Fill them in on the Admin tab before you approve anything.</div>` : ''}
+
+    <h3 style="margin:18px 0 2px">The records themselves</h3>
+    <p class="sub" style="margin-bottom:10px">Click one to see exactly what an employee would be shown.</p>
+    ${drafts.map((d,i) => `
+      <details class="sec">
+        <summary>${esc(d.scenario)}
+          ${isDupe(d)?'<span class="badge-new">ALREADY EXISTS</span>':''}
+          <span class="ssum">${esc(d.dept)} &rsaquo; ${esc(d.topic)}</span></summary>
+        <div class="sbody">
+          <div class="dpath" style="margin-bottom:8px">Asked as: &ldquo;${esc(d.trigger)}&rdquo;</div>
+          ${(d.aliases||[]).length?`<div class="dpath" style="margin-bottom:10px">Also finds: ${esc(d.aliases.join(', '))}</div>`:''}
+          <div class="tblwrap"><table><thead><tr>
+            ${d.inputs.map(x=>`<th>${esc(x.name)}</th>`).join('')}<th>Decision</th></tr></thead><tbody>
+            ${d.rules.map(r=>`<tr>${d.inputs.map((_,ii)=>`<td>${esc(r.when[ii]||ANY)}</td>`).join('')}
+              <td>${marks(r.verdict)}</td></tr>`).join('')}
+          </tbody></table></div>
+          ${d.rules.map((r,ri)=>`
+            <div class="draftcard" style="margin-top:12px">
+              <div class="dhead"><b>${marks(r.verdict)}</b></div>
+              <div class="dpath">when ${esc(d.inputs.map((_,ii)=>r.when[ii]||ANY).filter(v=>v!==ANY).join(' + ')||'any situation')}</div>
+              ${(r.steps||[]).length?`<ol class="steps" style="margin-top:8px">${r.steps.map(s=>`<li>${marks(s)}</li>`).join('')}</ol>`:''}
+              ${r.wording?`<div class="note" style="margin-top:8px">${marks(r.wording)}</div>`:''}
+              <div class="dpath" style="margin-top:8px"><b>Authority:</b> ${marks(r.authority||'not set')}</div>
+              <div class="dpath"><b>Escalate:</b> ${marks(r.escalate||'not set')}</div>
+            </div>`).join('')}
+        </div>
+      </details>`).join('')}`;
+}
+
+async function importDrafts(){
+  const fresh = drafts.filter(d => !isDupe(d));   // duplicate prevention, same rule as the editor
+  const skipped = drafts.length - fresh.length;
+  const done = (added, extra) => {
+    drafts = [];
+    document.getElementById('brainOut').innerHTML =
+      `<div class="note"><b>${added} draft${added===1?'':'s'} added.</b>${skipped?` ${skipped} skipped as duplicates.`:''}
+       ${extra||''} Nothing is live yet. Open the Admin tab, check them, then switch each one to Approved.</div>`;
+    renderAdmin();
+  };
+
+  if(MODE === 'cloud'){
+    try{
+      const res = await pushRecords(fresh);
+      const bounced = (res.rejected||[]).length
+        ? `${res.rejected.length} rejected by the server (${esc(res.rejected[0].problem)}).` : '';
+      done(res.saved, bounced);
+    }catch(e){ toast(e.message, true); }
+    return;
+  }
+  DB.records.push(...fresh); save(); done(fresh.length);
+}
+
+/* ---------- export / import ---------- */
+function exportJson(){
+  const blob = new Blob([JSON.stringify(DB,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'wisdom-base-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function importJson(ev){
+  const f = ev.target.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const d = JSON.parse(r.result);
+      if(!d || !Array.isArray(d.records)) throw new Error('not a Wisdom Base file');
+      DB = { records:d.records, gaps:d.gaps||[] };
+      save(); renderAdmin(); resetNav();
+    }catch(e){ alert('Could not read that file: ' + e.message); }
+  };
+  r.readAsText(f); ev.target.value='';
+}
+
+/* ---------- boot ----------
+   Try the backend. If there is one, use it. If not, run on this browser alone
+   so the file still works when you double click it. */
+async function boot(){
+  if(location.protocol !== 'file:'){
+    try{
+      const me = await fetch('/api/me');
+      if(me.ok){
+        ME = await me.json();
+        MODE = 'cloud';
+        await pullCloud();
+      }
+    }catch(e){ /* no backend here, stay local */ }
+  }
+  renderWho();
+  renderQuestions(); renderFind(); renderAdmin();
+  if(MODE === 'local' && location.protocol !== 'file:'){
+    console.info('Wisdom Base running in local mode: no backend found at /api/me');
+  }
+}
+boot();
+</script>
+</body>
+</html>
