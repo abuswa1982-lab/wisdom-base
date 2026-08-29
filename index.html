@@ -132,6 +132,9 @@
   .badge-new{display:inline-block;background:var(--warn-soft);color:var(--warn);font-size:10.5px;
     font-weight:700;letter-spacing:.05em;padding:2px 6px;border-radius:4px;margin-left:7px;vertical-align:1px}
   .needs{background:var(--warn-soft);color:var(--warn);font-weight:600;padding:1px 5px;border-radius:4px}
+  .nextwrap{border-top:1px solid var(--line);padding-top:14px;margin-top:18px}
+  .nextbtn{font-size:15px}
+  .nextbtn:hover{filter:brightness(1.1)}
   .whoami{font-size:12.5px;color:var(--muted);text-align:right;line-height:1.3;padding-left:10px}
   .whoami b{color:var(--ink);font-weight:600}
   .whoami .role{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:10.5px;
@@ -680,6 +683,7 @@ function recordView(rec){
         <div class="note">${esc(rule.wording)}</div></div>`:''}
       <div class="block"><div class="blabel">Your authority</div><div>${esc(rule.authority||'Not set')}</div></div>
       <div class="block"><div class="blabel">Escalate when</div><div>${esc(rule.escalate||'Not set')}</div></div>
+      ${nextStep(rule)}
       <div class="block muted" style="font-size:12.5px">Record ${esc(rec.id)} &middot; owner ${esc(rec.owner||'unassigned')} &middot; updated ${esc(rec.updated||'')}</div>`;
   }
 
@@ -695,6 +699,24 @@ function recordView(rec){
 
   return `<h2>${esc(rec.scenario)}</h2><p class="sub">${esc(rec.trigger)}</p>
     <div class="ctx">${ctx}</div>${out}${tbl}`;
+}
+
+/* ---------- chaining ----------
+   One engine owns one decision. When a decision leads into the next question
+   ("we accepted the return, now who pays the shipping?"), the outcome carries
+   the employee straight there instead of leaving them to go hunting. */
+function nextStep(rule){
+  if(!rule.next) return '';
+  const nx = live().find(r => r.id === rule.next);
+  // a next step pointing at a deleted or unapproved record shows nothing,
+  // rather than a button that dead-ends
+  if(!nx) return '';
+  return `<div class="block nextwrap">
+    <div class="blabel">This is not the end of it</div>
+    <button class="btn nextbtn" onclick="openRec('${nx.id}')">
+      Next decision: ${esc(nx.scenario)} &rsaquo;</button>
+    <div class="muted" style="font-size:12.5px;margin-top:6px">${esc(nx.dept)} &rsaquo; ${esc(nx.topic)}</div>
+  </div>`;
 }
 
 function setPick(sel){ picks[+sel.dataset.i] = sel.value; renderFind(); }
@@ -951,6 +973,14 @@ function drawRules(){
         <div class="fld" style="flex:1;margin:0"><label>Escalate when</label>
           <input type="text" value="${esc(r.escalate||'')}" placeholder="Only if..."
                  oninput="editing.rules[${ri}].escalate=this.value"></div>
+      </div>
+      <div class="fld" style="margin-top:12px;margin-bottom:0"><label>Next decision (optional)</label>
+        <select onchange="editing.rules[${ri}].next=this.value">
+          <option value="">Nothing, this decision ends it</option>
+          ${DB.records.filter(x => x.id !== editing.id).map(x =>
+            `<option value="${esc(x.id)}"${r.next===x.id?' selected':''}>${esc(x.scenario)} (${esc(x.topic)})</option>`).join('')}
+        </select>
+        <div class="hint">Use this when the answer leads straight into another question, like accepting a return then deciding who pays the shipping. Keep one decision per record and chain them.</div>
       </div>
       </div>
     </details>`;}).join('') || '<div class="muted" style="font-size:13.5px;margin-bottom:10px">No rules yet. Add at least one.</div>';
@@ -1232,7 +1262,8 @@ function normalizeDraft(d,i){
     rules:(d.rules||[]).map(r => ({
       when: inputs.map((_,ii)=> String((r.when||[])[ii] ?? ANY)),
       verdict:String(r.verdict||''), steps:(r.steps||[]).map(String),
-      wording:String(r.wording||''), authority:String(r.authority||''), escalate:String(r.escalate||'')
+      wording:String(r.wording||''), authority:String(r.authority||''), escalate:String(r.escalate||''),
+      next:String(r.next||'')
     })),
     status:'draft', owner:'', updated:new Date().toISOString().slice(0,10)
   };
