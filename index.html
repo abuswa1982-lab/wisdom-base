@@ -1081,10 +1081,35 @@ Rules:
 - Order rules most specific first. First match wins.
 - Keep inputs to the 2 or 3 things that actually change the answer.
 - verdict is one decisive sentence. steps are what the employee does, in order.
-- wording is what they say to the customer, in plain human language.
 - authority says who can do this without approval. escalate says when to go to a supervisor.
-- If the notes do not state a threshold or a number, write the field as "NEEDS DECISION: <the question>" rather than inventing a policy.
-- Do not invent scenarios the notes do not mention.`;
+- If the notes do not state a threshold, a number or a timeframe, write the field as "NEEDS DECISION: <the question>" rather than inventing a policy. Never invent a refund window, a fee, a dollar limit or a "3 to 5 business days".
+- Do not invent scenarios the notes do not mention.
+
+NEVER write a vague condition. An input named "Condition" with an option
+"Meets all requirements" is useless, because a new employee does not know what
+the requirements are and has to go hunting. Put the criteria inside the
+question itself and make the options Yes/No. For example, not "Condition:
+[meets all requirements]" but:
+  name:    "Are ALL return conditions met? (unused and resellable; not damaged
+            or altered; original packaging; tags intact; nothing missing)"
+  options: Yes, No
+
+Name categories by their consequence, not by blame. "Abolox-caused return"
+and "Customer-initiated return", never "fault" and never "remorse". Carrier
+damage is not the seller's fault but is the seller's cost, and a customer
+changing their mind is nobody's fault.
+
+The "wording" field is a COMPLETE message the employee can say or send as is.
+It must close the loop, answering all four of these:
+  1. what we decided
+  2. what happens next, and who does it
+  3. what the customer must do, and what it costs them
+  4. when it ends, and what they get
+Never end on ambiguity. "We will be happy to accept this return", "someone
+will be in touch", or "we will look into it" are failures, because the
+customer has to email back to find out what actually happens. Write it so
+they have no reason to reply. This applies to refusals too: a "no" still
+states plainly that it is final and what, if anything, is on offer instead.`;
 
 let drafts = [];
 let attachments = [];   // {name, kind:'text'|'pdf'|'image', text?, b64?, media?}
