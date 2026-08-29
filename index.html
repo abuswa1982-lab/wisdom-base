@@ -259,6 +259,14 @@
       <div id="gapsList"></div>
     </div>
 
+    <div class="panel hidden" id="historyPanel">
+      <div class="row" style="justify-content:space-between">
+        <h2 id="historyTitle">History</h2>
+        <button class="btn ghost sm" onclick="closeHistory()">Close</button>
+      </div>
+      <div id="historyBody" style="margin-top:12px"></div>
+    </div>
+
     <div class="panel hidden" id="editorPanel">
       <h2 id="editorTitle">New record</h2>
       <p class="sub">Layers 1 to 3 are how people navigate to it. The table underneath is where the decision actually gets made.</p>
@@ -488,9 +496,21 @@ function toast(msg, bad){
 let DB = load();
 function load(){
   try{ const raw = localStorage.getItem(KEY); if(raw){ const d = JSON.parse(raw);
-    if(d && Array.isArray(d.records)){ d.gaps = d.gaps || []; return d; } } }catch(e){ console.warn('load failed', e); }
-  return seed();
+    if(d && Array.isArray(d.records)){ d.gaps = d.gaps || []; d.versions = d.versions || {}; return d; } } }catch(e){ console.warn('load failed', e); }
+  const s = seed(); s.versions = {}; return s;
 }
+/* Every save keeps the previous version so nothing is ever a one way door.
+   In cloud mode the server does this. Off disk, we keep them here. */
+function snapshotLocal(id){
+  if(MODE === 'cloud') return;
+  const cur = DB.records.find(r => r.id === id);
+  if(!cur) return;
+  DB.versions = DB.versions || {};
+  DB.versions[id] = [{ id: Date.now(), savedAt: new Date().toISOString(), savedBy: 'you',
+                       snap: JSON.parse(JSON.stringify(cur)) },
+                     ...(DB.versions[id] || [])].slice(0, 20);
+}
+
 function save(){
   if(MODE === 'cloud') return;            // the server is the store, not this browser
   try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){ console.warn('save failed', e); }
@@ -940,6 +960,7 @@ function renderAdmin(){
       </div>
       <span class="pill ${r.status==='approved'?'ok':'draft'}">${r.status==='approved'?'Approved':'Draft'}</span>
       <span class="muted" style="font-size:12.5px">${r.rules.length} rule${r.rules.length===1?'':'s'}</span>
+      <button class="btn ghost sm" onclick="showHistory('${r.id}')">History</button>
       <button class="btn ghost sm" onclick="editRecord('${r.id}')">Edit</button>
     </div>`).join('') : '<div class="empty">No records yet.</div>';
 
@@ -1108,6 +1129,7 @@ function saveRecord(){
     return;
   }
 
+  snapshotLocal(editing.id);
   const idx = DB.records.findIndex(r => r.id===editing.id);
   if(idx>=0) DB.records[idx] = editing; else DB.records.push(editing);
   save(); closeEditor(); renderAdmin();
@@ -1481,6 +1503,72 @@ async function importDrafts(){
     return;
   }
   DB.records.push(...fresh); save(); done(fresh.length);
+}
+
+/* ================= VERSION HISTORY =================
+   Nothing you do to a record is a one way door. Every save keeps the version
+   before it, and any of them can be put back in one click. */
+
+async function showHistory(id){
+  const rec = DB.records.find(r => r.id === id);
+  const panel = document.getElementById('historyPanel');
+  const body  = document.getElementById('historyBody');
+  document.getElementById('historyTitle').textContent = 'History: ' + (rec ? rec.scenario : id);
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({behavior:'smooth'});
+  body.innerHTML = '<div class="empty">Loading...</div>';
+
+  let versions = [];
+  try{
+    if(MODE === 'cloud'){
+      versions = (await api('/api/records/' + encodeURIComponent(id) + '/versions')).versions || [];
+    } else {
+      versions = ((DB.versions || {})[id] || []).map(v => ({
+        id: v.id, savedAt: v.savedAt, savedBy: v.savedBy,
+        scenario: v.snap.scenario, status: v.snap.status,
+        inputs: (v.snap.inputs||[]).length, rules: (v.snap.rules||[]).length }));
+    }
+  }catch(e){ body.innerHTML = `<div class="note bad">${esc(e.message)}</div>`; return; }
+
+  if(!versions.length){
+    body.innerHTML = `<div class="empty">No earlier versions yet. The next time you save
+      this record, the version before it is kept here.</div>`;
+    return;
+  }
+
+  body.innerHTML = `<p class="sub">Newest first. Restoring puts that version back as the
+    live record, and the current one is kept here too, so a restore can itself be undone.</p>` +
+    versions.map(v => `
+      <div class="rec">
+        <div class="rmain">
+          <div class="rname">${esc((v.savedAt||'').replace('T',' ').slice(0,16))}</div>
+          <div class="rpath">${esc(v.savedBy||'unknown')} &middot; ${v.inputs} question${v.inputs===1?'':'s'},
+            ${v.rules} rule${v.rules===1?'':'s'} &middot; ${esc(v.status||'')}</div>
+        </div>
+        <button class="btn ghost sm" onclick="restoreVersion('${id}', ${v.id})">Restore this</button>
+      </div>`).join('');
+}
+
+function closeHistory(){ document.getElementById('historyPanel').classList.add('hidden'); }
+
+async function restoreVersion(id, versionId){
+  try{
+    if(MODE === 'cloud'){
+      await api(`/api/records/${encodeURIComponent(id)}/restore/${versionId}`, {method:'POST'});
+      await pullCloud();
+    } else {
+      const list = (DB.versions || {})[id] || [];
+      const v = list.find(x => x.id === versionId);
+      if(!v) throw new Error('that version is gone');
+      snapshotLocal(id);                       // so the restore is itself undoable
+      const idx = DB.records.findIndex(r => r.id === id);
+      const restored = JSON.parse(JSON.stringify(v.snap));
+      if(idx >= 0) DB.records[idx] = restored; else DB.records.push(restored);
+      save();
+    }
+    toast('Restored');
+    renderAdmin(); showHistory(id); resetNav();
+  }catch(e){ toast(e.message, true); }
 }
 
 /* ---------- export / import ---------- */
