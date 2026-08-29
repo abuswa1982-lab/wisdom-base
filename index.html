@@ -45,13 +45,27 @@
   .crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;margin-bottom:14px;color:var(--muted)}
   .crumbs button{background:none;border:0;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
   .crumbs .sep{opacity:.5}
-  .ctx{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:6px 0 4px}
+  .ctx{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px 20px;margin:10px 0 4px}
+  /* short labels can shout, long ones must not: uppercasing a 40 word question
+     turns the screen into a wall. the criteria live under the box instead. */
   .ctx label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px;
     text-transform:uppercase;letter-spacing:.04em}
+  .ctx label.lng{font-size:14px;text-transform:none;letter-spacing:0;color:var(--ink);
+    font-weight:600;line-height:1.35;margin-bottom:7px}
+  .ctx .detail{font-size:12px;color:var(--muted);line-height:1.45;margin-top:6px}
+  .ctx .detail b{font-weight:600;color:var(--ink)}
   .verdict{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;
     padding:16px 18px;background:var(--accent-soft);margin-top:16px}
   .verdict .vtitle{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
   .verdict .vtext{font-size:17px;font-weight:600;line-height:1.4}
+  .verdict .vnote{font-size:12.5px;color:var(--accent);margin-top:7px;opacity:.85}
+  .unready{border-left:3px solid var(--danger);background:var(--danger-soft);padding:11px 14px;
+    border-radius:0 8px 8px 0;font-size:14px}
+  .unready .uhead{font-weight:700;color:var(--danger);margin-bottom:4px}
+  .openq{border-left:3px solid var(--warn);background:var(--warn-soft);padding:11px 14px;
+    border-radius:0 8px 8px 0}
+  .openq ul{margin:6px 0 0;padding-left:18px}
+  .openq li{margin-bottom:3px}
   .block{margin-top:16px}
   .block .blabel{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
   ol.steps{margin:0;padding-left:20px}
@@ -519,6 +533,21 @@ const live = () => DB.records.filter(r => r.status === 'approved');
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uniq = a => [...new Set(a)];
 function optLabels(inp){ return (inp.options||[]).map(o => typeof o === 'string' ? o : o.label); }
+
+/* A question like "Are ALL conditions met? (unused; undamaged; ...)" carries
+   its own criteria, which is right. But the criteria are reference material,
+   not the headline. Split them so the question stays readable and the detail
+   sits quietly underneath. */
+function splitName(name){
+  const s = String(name || '').trim();
+  const i = s.indexOf('(');
+  if(i > 0 && s.endsWith(')')){
+    return { q: s.slice(0, i).trim().replace(/[:\s]+$/, ''),
+             detail: s.slice(i + 1, s.length - 1).trim() };
+  }
+  return { q: s, detail: '' };
+}
+const shortName = n => splitName(n).q;
 function optHints(o){ return typeof o === 'string' ? [] : (o.hints||[]); }
 
 /* ---------- rule evaluation: first match wins ---------- */
@@ -658,15 +687,24 @@ function recordView(rec){
   const ctx = rec.inputs.map((inp,i) => {
     const opts = optLabels(inp).map(l =>
       `<option value="${esc(l)}"${picks[i]===l?' selected':''}>${esc(l)}</option>`).join('');
-    return `<div><label>${esc(inp.name)}</label>
-      <select data-i="${i}" onchange="setPick(this)"><option value="">Choose...</option>${opts}</select></div>`;
+    const { q, detail } = splitName(inp.name);
+    return `<div>
+      <label class="${q.length > 44 ? 'lng' : ''}">${esc(q)}</label>
+      <select data-i="${i}" onchange="setPick(this)"><option value="">Choose...</option>${opts}</select>
+      ${detail ? `<div class="detail"><b>Counts as:</b> ${esc(detail)}</div>` : ''}
+    </div>`;
   }).join('');
 
   const answered = rec.inputs.length===0 || picks.filter(p=>p).length===rec.inputs.length;
   const rule = evaluate(rec, picks);
+  // A rule can match before every box is filled, when the rest are wildcards.
+  // That is the whole point of a bypass: answer "yes, it was our error" and the
+  // decision is made. Do not march the rep through questions that cannot
+  // change the answer.
+  const settledEarly = rule && !answered;
 
   let out = '';
-  if(!answered){
+  if(!rule && !answered){
     out = `<div class="note">Answer the questions above and the decision appears here.</div>`;
   } else if(!rule){
     out = `<div class="note bad"><b>No rule covers this combination.</b><br>
@@ -676,11 +714,12 @@ function recordView(rec){
       <div class="verdict">
         <div class="vtitle">Decision</div>
         <div class="vtext">${esc(rule.verdict)}</div>
+        ${settledEarly ? `<div class="vnote">That settles it. The remaining questions do not change this answer.</div>` : ''}
       </div>
       ${rule.steps && rule.steps.length ? `<div class="block"><div class="blabel">Steps</div>
         <ol class="steps">${rule.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>`:''}
-      ${rule.wording ? `<div class="block"><div class="blabel">What to say</div>
-        <div class="note">${esc(rule.wording)}</div></div>`:''}
+      ${sayBlock(rule)}
+      ${openBlock(rule)}
       <div class="block"><div class="blabel">Your authority</div><div>${esc(rule.authority||'Not set')}</div></div>
       <div class="block"><div class="blabel">Escalate when</div><div>${esc(rule.escalate||'Not set')}</div></div>
       ${nextStep(rule)}
@@ -690,7 +729,7 @@ function recordView(rec){
   const tbl = `
     <div class="block"><div class="blabel">Full decision table</div>
     <div class="tblwrap"><table><thead><tr>
-      ${rec.inputs.map(i=>`<th>${esc(i.name)}</th>`).join('')}<th>Decision</th></tr></thead><tbody>
+      ${rec.inputs.map(i=>`<th title="${esc(i.name)}">${esc(shortName(i.name))}</th>`).join('')}<th>Decision</th></tr></thead><tbody>
       ${rec.rules.map(r=>{
         const hit = rule && r===rule;
         return `<tr class="${hit?'hit':''}">${rec.inputs.map((_,i)=>`<td>${esc(r.when[i]||ANY)}</td>`).join('')}<td>${esc(r.verdict)}</td></tr>`;
@@ -699,6 +738,38 @@ function recordView(rec){
 
   return `<h2>${esc(rec.scenario)}</h2><p class="sub">${esc(rec.trigger)}</p>
     <div class="ctx">${ctx}</div>${out}${tbl}`;
+}
+
+/* ---------- customer script ----------
+   This text gets read aloud to a customer. If it still has placeholders in it,
+   it is not a script, it is a note to ourselves, and showing it as a script is
+   how a rep ends up reading "NEEDS DECISION" down the phone. Catch it. */
+const UNFINISHED = /NEEDS DECISION|\[[^\]]{1,60}\]|\{[^}]{1,60}\}|<[a-z0-9 _-]{1,40}>|\bTBD\b|\bXX+\b|_{3,}/i;
+
+function sayBlock(rule){
+  const w = String(rule.wording || '').trim();
+  if(!w) return '';
+  if(UNFINISHED.test(w)){
+    return `<div class="block"><div class="blabel">What to say</div>
+      <div class="unready">
+        <div class="uhead">Do not read this to a customer yet.</div>
+        This script still has blanks in it, so it is not finished. Say what the
+        decision above says, in your own words, and tell your supervisor this
+        record needs writing properly.
+      </div></div>`;
+  }
+  return `<div class="block"><div class="blabel">What to say</div>
+    <div class="note">${esc(w)}</div></div>`;
+}
+
+/* Open questions are for whoever owns the policy, never for the customer. */
+function openBlock(rule){
+  const list = (rule.open || []).map(x => String(x).trim()).filter(Boolean);
+  if(!list.length) return '';
+  return `<div class="block"><div class="blabel">Not decided yet</div>
+    <div class="openq">These are unanswered by the policy, not by you. Do not
+      improvise them with a customer, ask your supervisor.
+      <ul>${list.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div>`;
 }
 
 /* ---------- chaining ----------
@@ -941,7 +1012,7 @@ function drawRules(){
   document.getElementById('sumRules').textContent =
     editing.rules.length ? editing.rules.length + (editing.rules.length===1?' rule':' rules') : 'none yet';
   document.getElementById('sumInputs').textContent =
-    editing.inputs.length ? editing.inputs.map(i=>i.name||'unnamed').join(', ') : 'none yet';
+    editing.inputs.length ? editing.inputs.map(i=>shortName(i.name)||'unnamed').join(', ') : 'none yet';
 
   document.getElementById('rulesWrap').innerHTML = editing.rules.map((r,ri)=>{
     const cond = editing.inputs.map((_,ii)=> r.when[ii]||ANY).filter(v=>v!==ANY).join(' + ') || 'any situation';
@@ -953,7 +1024,7 @@ function drawRules(){
         <button class="btn danger sm" onclick="delRule(${ri})">Remove rule</button>
       </div>
       <div class="ctx" style="margin-top:0">
-        ${editing.inputs.map((inp,ii)=>`<div><label>${esc(inp.name||'Question '+(ii+1))}</label>
+        ${editing.inputs.map((inp,ii)=>`<div><label>${esc(shortName(inp.name)||'Question '+(ii+1))}</label>
           <select onchange="editing.rules[${ri}].when[${ii}]=this.value">
             <option value="${ANY}"${(r.when[ii]||ANY)===ANY?' selected':''}>${ANY}</option>
             ${optLabels(inp).map(l=>`<option value="${esc(l)}"${r.when[ii]===l?' selected':''}>${esc(l)}</option>`).join('')}
@@ -965,7 +1036,12 @@ function drawRules(){
       <div class="fld" style="margin-bottom:10px"><label>Steps</label>
         <textarea placeholder="One step per line" oninput="editing.rules[${ri}].steps=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)">${esc((r.steps||[]).join('\n'))}</textarea></div>
       <div class="fld" style="margin-bottom:10px"><label>What to say to the customer</label>
-        <textarea oninput="editing.rules[${ri}].wording=this.value">${esc(r.wording||'')}</textarea></div>
+        <textarea oninput="editing.rules[${ri}].wording=this.value">${esc(r.wording||'')}</textarea>
+        <div class="hint">Read aloud word for word. No placeholders, no brackets, nothing to fill in.</div></div>
+      <div class="fld" style="margin-bottom:10px"><label>Not decided yet</label>
+        <textarea placeholder="One open question per line. These are never said to a customer."
+          oninput="editing.rules[${ri}].open=this.value.split('\n').map(s=>s.trim()).filter(Boolean)">${esc((r.open||[]).join('\n'))}</textarea>
+        <div class="hint">Policy gaps for you or Colton to settle. Kept out of the script.</div></div>
       <div class="row">
         <div class="fld" style="flex:1;margin:0"><label>Who can do this alone</label>
           <input type="text" value="${esc(r.authority||'')}" placeholder="Any CS rep. No approval needed."
@@ -985,7 +1061,7 @@ function drawRules(){
       </div>
     </details>`;}).join('') || '<div class="muted" style="font-size:13.5px;margin-bottom:10px">No rules yet. Add at least one.</div>';
 }
-function addRule(){ editing.rules.push({ when: editing.inputs.map(()=>ANY), verdict:'', steps:[], wording:'', authority:'', escalate:'' }); drawRules(); }
+function addRule(){ editing.rules.push({ when: editing.inputs.map(()=>ANY), verdict:'', steps:[], wording:'', authority:'', escalate:'', open:[] }); drawRules(); }
 function delRule(i){ editing.rules.splice(i,1); drawRules(); }
 
 function saveRecord(){
@@ -1074,7 +1150,7 @@ function saveKey(){
 const SCHEMA_NOTE = `Return ONLY a JSON array, no prose, no markdown fence. Each element:
 {"dept":str,"topic":str,"scenario":str,"trigger":str,"aliases":[str],
  "inputs":[{"name":str,"options":[{"label":str,"hints":[str]}]}],
- "rules":[{"when":[str],"verdict":str,"steps":[str],"wording":str,"authority":str,"escalate":str}]}
+ "rules":[{"when":[str],"verdict":str,"steps":[str],"wording":str,"authority":str,"escalate":str,"open":[str]}]}
 
 Rules:
 - "when" has one entry per input, in the same order. Use "Any" where the value does not matter.
@@ -1099,17 +1175,32 @@ and "Customer-initiated return", never "fault" and never "remorse". Carrier
 damage is not the seller's fault but is the seller's cost, and a customer
 changing their mind is nobody's fault.
 
-The "wording" field is a COMPLETE message the employee can say or send as is.
-It must close the loop, answering all four of these:
+The "wording" field is spoken to a CUSTOMER, word for word, exactly as written.
+It must therefore be plain finished English with NOTHING to fill in.
+NEVER put "NEEDS DECISION", square brackets, placeholders, internal labels
+like "NEXT STEP:" or "COST TO YOU:", or any question to yourself inside it.
+A rep will read it aloud. If it is not sayable to a customer as it stands,
+it is wrong.
+
+Anything still undecided goes in the separate "open" field instead, as short
+plain questions for the business owner. That field is never shown as script.
+
+The wording should close the loop as far as THIS decision goes:
   1. what we decided
   2. what happens next, and who does it
-  3. what the customer must do, and what it costs them
-  4. when it ends, and what they get
-Never end on ambiguity. "We will be happy to accept this return", "someone
-will be in touch", or "we will look into it" are failures, because the
-customer has to email back to find out what actually happens. Write it so
-they have no reason to reply. This applies to refusals too: a "no" still
-states plainly that it is final and what, if anything, is on offer instead.`;
+  3. what the customer must do, and what it costs them, if this decision covers it
+  4. when it ends and what they get, if this decision covers it
+Never end on empty ambiguity like "we will be happy to accept this return" or
+"someone will be in touch". Refusals must close too: state plainly that it is
+final and what, if anything, is on offer instead.
+
+IMPORTANT: each record owns exactly ONE decision. Do not answer questions that
+belong to a later decision. If eligibility is decided here but shipping cost
+and refund timing are decided elsewhere, the wording confirms the decision and
+hands off cleanly, for example "Your return is approved. Let me sort out the
+return label and refund details with you now." Do not invent the shipping or
+refund terms, and do not leave a placeholder for them either. Say only what
+this decision actually settles.`;
 
 let drafts = [];
 let attachments = [];   // {name, kind:'text'|'pdf'|'image', text?, b64?, media?}
@@ -1288,7 +1379,7 @@ function normalizeDraft(d,i){
       when: inputs.map((_,ii)=> String((r.when||[])[ii] ?? ANY)),
       verdict:String(r.verdict||''), steps:(r.steps||[]).map(String),
       wording:String(r.wording||''), authority:String(r.authority||''), escalate:String(r.escalate||''),
-      next:String(r.next||'')
+      open:(r.open||[]).map(String), next:String(r.next||'')
     })),
     status:'draft', owner:'', updated:new Date().toISOString().slice(0,10)
   };
@@ -1350,7 +1441,7 @@ function renderDrafts(){
           <div class="dpath" style="margin-bottom:8px">Asked as: &ldquo;${esc(d.trigger)}&rdquo;</div>
           ${(d.aliases||[]).length?`<div class="dpath" style="margin-bottom:10px">Also finds: ${esc(d.aliases.join(', '))}</div>`:''}
           <div class="tblwrap"><table><thead><tr>
-            ${d.inputs.map(x=>`<th>${esc(x.name)}</th>`).join('')}<th>Decision</th></tr></thead><tbody>
+            ${d.inputs.map(x=>`<th title="${esc(x.name)}">${esc(shortName(x.name))}</th>`).join('')}<th>Decision</th></tr></thead><tbody>
             ${d.rules.map(r=>`<tr>${d.inputs.map((_,ii)=>`<td>${esc(r.when[ii]||ANY)}</td>`).join('')}
               <td>${marks(r.verdict)}</td></tr>`).join('')}
           </tbody></table></div>
@@ -1359,7 +1450,9 @@ function renderDrafts(){
               <div class="dhead"><b>${marks(r.verdict)}</b></div>
               <div class="dpath">when ${esc(d.inputs.map((_,ii)=>r.when[ii]||ANY).filter(v=>v!==ANY).join(' + ')||'any situation')}</div>
               ${(r.steps||[]).length?`<ol class="steps" style="margin-top:8px">${r.steps.map(s=>`<li>${marks(s)}</li>`).join('')}</ol>`:''}
-              ${r.wording?`<div class="note" style="margin-top:8px">${marks(r.wording)}</div>`:''}
+              ${r.wording?`<div class="${UNFINISHED.test(r.wording)?'unready':'note'}" style="margin-top:8px">${marks(r.wording)}</div>`:''}
+              ${(r.open||[]).length?`<div class="openq" style="margin-top:8px"><b>Not decided yet:</b>
+                <ul>${r.open.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
               <div class="dpath" style="margin-top:8px"><b>Authority:</b> ${marks(r.authority||'not set')}</div>
               <div class="dpath"><b>Escalate:</b> ${marks(r.escalate||'not set')}</div>
             </div>`).join('')}
