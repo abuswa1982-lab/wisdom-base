@@ -186,6 +186,20 @@ export async function onRequest(context) {
         const problem = validate(rec);
         if (problem) { rejected.push({ scenario: rec.scenario, problem }); continue; }
         try {
+          // Snapshot whatever is there now BEFORE overwriting it, so any save
+          // can be undone. This is what makes experimenting safe.
+          const prev = await env.DB.prepare('SELECT * FROM records WHERE id = ?')
+            .bind(clean(rec.id)).first();
+          if (prev) {
+            await env.DB.prepare(
+              'INSERT INTO record_versions (record_id, snapshot, saved_at, saved_by) VALUES (?,?,?,?)'
+            ).bind(prev.id, JSON.stringify(prev), new Date().toISOString(), email).run();
+            await env.DB.prepare(
+              `DELETE FROM record_versions WHERE record_id = ? AND id NOT IN
+               (SELECT id FROM record_versions WHERE record_id = ? ORDER BY id DESC LIMIT 20)`
+            ).bind(prev.id, prev.id).run();
+          }
+
           await env.DB.prepare(
             `INSERT INTO records (id,dept,topic,scenario,trigger,aliases,inputs,rules,status,owner,updated,updated_by)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
@@ -221,6 +235,65 @@ export async function onRequest(context) {
       await env.DB.prepare('DELETE FROM records WHERE id = ?')
         .bind(path.split('/').pop()).run();
       return json({ ok: true });
+    }
+
+    /* version history: list and restore */
+    if (/^\/api\/records\/[^/]+\/versions$/.test(path) && method === 'GET') {
+      const denied = requireAdmin(); if (denied) return denied;
+      const rid = decodeURIComponent(path.split('/')[3]);
+      const { results } = await env.DB.prepare(
+        `SELECT id, saved_at, saved_by, snapshot FROM record_versions
+         WHERE record_id = ? ORDER BY id DESC LIMIT 20`).bind(rid).all();
+      return json({
+        versions: (results || []).map((v) => {
+          const snap = parse(v.snapshot, {});
+          return {
+            id: v.id, savedAt: v.saved_at, savedBy: v.saved_by,
+            scenario: snap.scenario || '', status: snap.status || '',
+            inputs: parse(snap.inputs, []).length,
+            rules: parse(snap.rules, []).length
+          };
+        })
+      });
+    }
+
+    if (/^\/api\/records\/[^/]+\/restore\/\d+$/.test(path) && method === 'POST') {
+      const denied = requireAdmin(); if (denied) return denied;
+      const parts = path.split('/');
+      const rid = decodeURIComponent(parts[3]);
+      const vid = Number(parts[5]);
+
+      const row = await env.DB.prepare(
+        'SELECT snapshot FROM record_versions WHERE id = ? AND record_id = ?')
+        .bind(vid, rid).first();
+      if (!row) return json({ error: 'that version no longer exists' }, 404);
+
+      const snap = parse(row.snapshot, null);
+      if (!snap) return json({ error: 'that version could not be read' }, 500);
+
+      // restoring is itself a change, so snapshot the current state too
+      const cur = await env.DB.prepare('SELECT * FROM records WHERE id = ?').bind(rid).first();
+      if (cur) {
+        await env.DB.prepare(
+          'INSERT INTO record_versions (record_id, snapshot, saved_at, saved_by) VALUES (?,?,?,?)'
+        ).bind(rid, JSON.stringify(cur), new Date().toISOString(), email + ' (before restore)').run();
+      }
+
+      await env.DB.prepare(
+        `INSERT INTO records (id,dept,topic,scenario,trigger,aliases,inputs,rules,status,owner,updated,updated_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(id) DO UPDATE SET
+           dept=excluded.dept, topic=excluded.topic, scenario=excluded.scenario,
+           trigger=excluded.trigger, aliases=excluded.aliases, inputs=excluded.inputs,
+           rules=excluded.rules, status=excluded.status, owner=excluded.owner,
+           updated=excluded.updated, updated_by=excluded.updated_by`
+      ).bind(
+        snap.id, snap.dept, snap.topic, snap.scenario, snap.trigger,
+        snap.aliases, snap.inputs, snap.rules, snap.status, snap.owner,
+        new Date().toISOString().slice(0, 10), email + ' (restored)'
+      ).run();
+
+      return json({ ok: true, restored: vid });
     }
 
     /* gaps: anyone can log one, only admins clear them */
