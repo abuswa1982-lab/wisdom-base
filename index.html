@@ -62,6 +62,9 @@
   .unready{border-left:3px solid var(--danger);background:var(--danger-soft);padding:11px 14px;
     border-radius:0 8px 8px 0;font-size:14px}
   .unready .uhead{font-weight:700;color:var(--danger);margin-bottom:4px}
+  .done{border-left:3px solid var(--ok);background:var(--ok-soft);padding:11px 14px;
+        border-radius:8px;font-weight:600;color:var(--ok)}
+  .detail.carried{color:var(--muted);font-style:italic;background:none;border:0;padding:4px 0 0}
   .openq{border-left:3px solid var(--warn);background:var(--warn-soft);padding:11px 14px;
     border-radius:0 8px 8px 0}
   .openq ul{margin:6px 0 0;padding-left:18px}
@@ -407,8 +410,9 @@ function seedConditions(){ return [
     ]},
   { id:'c-days', name:'Days since the customer received the item', detail:'',
     options:[
-      {label:'60 days or less',  hints:['within 60','a week ago','last month','recently']},
-      {label:'More than 60 days',hints:['months ago','past 60','last year','long time ago']}
+      {label:'0 to 30 days',     hints:['within 30','a week ago','last week','few days','recently','couple weeks']},
+      {label:'31 to 60 days',    hints:['last month','about six weeks','over a month','month and a half']},
+      {label:'More than 60 days',hints:['months ago','past 60','last year','long time ago','back in the spring']}
     ]},
   { id:'c-category', name:'Product category', detail:'',
     options:[
@@ -738,6 +742,36 @@ let flow = [];                       // [{recId, picks:[]}]
 const clearFlow = () => { flow = []; };
 const blankPicks = rec => (rec.inputs || []).map(() => '');
 
+/* A condition answered earlier in the call carries forward. "Whose mistake is
+   it?" is the same question in every engine, so nobody should be asked it
+   twice. Returns the picks for a new step with anything already known filled
+   in, and the list of input positions that were carried rather than asked. */
+function carriedPicks(rec, upto){
+  const known = new Map();
+  for(let i = 0; i < upto; i++){
+    const prev = live().find(r => r.id === flow[i].recId);
+    if(!prev) continue;
+    (prev.inputs || []).forEach((inp, ii) => {
+      const ref = inp && inp.ref;
+      const val = flow[i].picks[ii];
+      if(ref && val) known.set(ref, val);
+    });
+  }
+  const picks = [], carried = [];
+  (rec.inputs || []).forEach((inp, ii) => {
+    const ref = inp && inp.ref;
+    if(ref && known.has(ref)){ picks.push(known.get(ref)); carried.push(ii); }
+    else picks.push('');
+  });
+  return { picks, carried };
+}
+
+function carriedAt(step){
+  const rec = live().find(r => r.id === flow[step].recId);
+  if(!rec || step === 0) return [];
+  return carriedPicks(rec, step).carried;
+}
+
 /* Extend or trim the flow to match the answers given so far. Changing an
    earlier answer must throw away the steps that followed from the old one. */
 function syncFlow(){
@@ -754,7 +788,7 @@ function syncFlow(){
 
     if(flow[i+1] && flow[i+1].recId === nextId) continue;   // already there
     flow.length = i + 1;
-    flow.push({ recId: nextId, picks: blankPicks(nx) });
+    flow.push({ recId: nextId, picks: carriedPicks(nx, i + 1).picks });
   }
 }
 
@@ -881,14 +915,17 @@ function recordView(rec, step){
        <p class="sub">${esc(rec.trigger)}</p>`
     : `<div class="stephead"><span class="stepnum">Step ${step+1} of ${total}</span>
          <span class="stepname">${esc(rec.scenario)}</span></div>`;
+  const carried = carriedAt(step);
   const ctx = rec.inputs.map((inp,i) => {
     const R = resolveInput(inp);
     const opts = R.options.map(o => (typeof o === 'string' ? o : o.label)).map(l =>
       `<option value="${esc(l)}"${picks[i]===l?' selected':''}>${esc(l)}</option>`).join('');
+    const fromEarlier = carried.indexOf(i) >= 0 && picks[i];
     return `<div>
       <label class="${R.name.length > 44 ? 'lng' : ''}">${esc(R.name)}</label>
       <select data-s="${step}" data-i="${i}" onchange="setPick(this)"><option value="">Choose...</option>${opts}</select>
-      ${R.detail ? `<div class="detail"><b>Counts as:</b> ${esc(R.detail)}</div>` : ''}
+      ${fromEarlier ? `<div class="detail carried">Already answered earlier in this call. Change it here if it was wrong.</div>` : ''}
+      ${R.detail && !fromEarlier ? `<div class="detail"><b>Counts as:</b> ${esc(R.detail)}</div>` : ''}
     </div>`;
   }).join('');
 
@@ -979,6 +1016,11 @@ function nextStep(rule, rec){
     // No script and no next step means a rep gets a verdict and then silence.
     // Reps should not see plumbing, so only an admin is told, and told how to fix it.
     const noScript = !String(rule.wording || '').trim();
+    // A finished outcome must SAY it is finished. A blank space where the next
+    // step would be looks exactly like something failing to load.
+    if(!noScript){
+      return `<div class="block"><div class="done">Done. Nothing else to decide on this call.</div></div>`;
+    }
     if(noScript && ME.isAdmin && rec){
       return `<div class="block nextwrap">
         <div class="blabel">This outcome goes nowhere yet</div>
@@ -1449,6 +1491,32 @@ function editCondOpts(i, csv){
     return prev && typeof prev === 'object' ? prev : { label:l, hints:[] };
   });
   saveConditions();
+  warnOrphanedRules(DB.conditions[i].id, labels);
+}
+
+/* Changing an answer's wording does not change the rules that were written
+   against the old wording. Those rules simply stop matching, silently, which
+   is the worst way for a decision system to fail. Count them and say so. */
+function orphanedRules(condId, labels){
+  const ok = new Set([ANY, ...labels]);
+  const out = [];
+  for(const r of (DB.records||[])){
+    (r.inputs||[]).forEach((inp, ii) => {
+      if(!inp || inp.ref !== condId) return;
+      (r.rules||[]).forEach((rule, ri) => {
+        const v = rule.when[ii];
+        if(v && !ok.has(v)) out.push({ scenario:r.scenario, rule:ri+1, was:v });
+      });
+    });
+  }
+  return out;
+}
+function warnOrphanedRules(condId, labels){
+  const bad = orphanedRules(condId, labels);
+  if(!bad.length) return;
+  const names = [...new Set(bad.map(b => '"' + b.was + '"'))].slice(0,3).join(', ');
+  toast(bad.length + ' rule' + (bad.length===1?'':'s') + ' still expect ' + names +
+        ', which is no longer an answer. Those rules will never match until you fix them.', true);
 }
 function addCondition(){
   DB.conditions = DB.conditions || [];
