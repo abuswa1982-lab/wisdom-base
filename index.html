@@ -146,6 +146,22 @@
   .badge-new{display:inline-block;background:var(--warn-soft);color:var(--warn);font-size:10.5px;
     font-weight:700;letter-spacing:.05em;padding:2px 6px;border-radius:4px;margin-left:7px;vertical-align:1px}
   .needs{background:var(--warn-soft);color:var(--warn);font-weight:600;padding:1px 5px;border-radius:4px}
+  .stepwrap{padding-top:4px}
+  .stepwrap + .stepwrap{border-top:2px solid var(--line);margin-top:26px;padding-top:20px}
+  .stephead{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  h2 .stepnum{vertical-align:3px;margin-right:4px}
+  .stepnum{background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;
+    letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .stepname{font-weight:650;font-size:15.5px}
+  .handoff{font-size:13.5px;color:var(--muted)}
+  .handoff b{color:var(--ink)}
+  .summary{border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .summary .srow{display:grid;grid-template-columns:minmax(140px,34%) 1fr;gap:14px;
+    padding:10px 14px;border-bottom:1px solid var(--line);font-size:14.5px}
+  .summary .srow:last-child{border-bottom:0}
+  .summary .srow:nth-child(odd){background:#fafbfc}
+  .summary .skey{color:var(--muted);font-weight:600}
+  .summary .sval{font-weight:600}
   .nextwrap{border-top:1px solid var(--line);padding-top:14px;margin-top:18px}
   .nextbtn{font-size:15px}
   .nextbtn:hover{filter:brightness(1.1)}
@@ -253,6 +269,43 @@
       <div class="reclist" id="adminList" style="margin-top:16px"></div>
     </div>
 
+    <div class="panel" id="topicsPanel">
+      <h2>Topics</h2>
+      <p class="sub">A topic is the process a decision belongs to. Everything that is part of
+        one job should share one topic, so it shows up as a single branch on Find. Tick the
+        ones that belong together, type the name you want, and press Merge.</p>
+      <div id="topicsList"></div>
+    </div>
+
+    <details class="sec" id="condPanel" style="margin-bottom:16px">
+      <summary>Conditions library <span class="ssum" id="sumConds"></span></summary>
+      <div class="sbody">
+        <p class="sub">The fixed set of questions your records are built from. Define a
+          question once here and every record that uses it shows the same wording and the
+          same answers. Change it here and it changes everywhere.</p>
+        <div id="condList"></div>
+        <button class="btn ghost sm" onclick="addCondition()">Add a condition</button>
+      </div>
+    </details>
+
+    <div class="panel" id="openPanel">
+      <div class="row" style="justify-content:space-between">
+        <h2>Not decided yet</h2>
+        <span class="muted" style="font-size:12.5px" id="openCount"></span>
+      </div>
+      <p class="sub">Every unsettled policy question, from every rule, in one place. Settle it
+        and press Settled and the yellow note disappears from that rule. You never have to dig
+        into the rule to remove it.</p>
+      <div id="openList"></div>
+    </div>
+
+    <div class="panel" id="loosePanel">
+      <h2>Outcomes that go nowhere</h2>
+      <p class="sub">Decisions with no script and no next step. A rep reaching one gets a
+        verdict and then silence. This is the chain you still have to finish.</p>
+      <div id="looseList"></div>
+    </div>
+
     <div class="panel" id="gapsPanel">
       <h2>Unanswered questions</h2>
       <p class="sub">Questions people asked that no approved record covered. This is your build queue.</p>
@@ -269,12 +322,12 @@
 
     <div class="panel hidden" id="editorPanel">
       <h2 id="editorTitle">New record</h2>
-      <p class="sub">Layers 1 to 3 are how people navigate to it. The table underneath is where the decision actually gets made.</p>
+      <p class="sub">Department, topic and decision are how people navigate to it. The table underneath is where the decision actually gets made. Everything that belongs to one process shares a topic, so Returns is one branch and its decisions sit inside it.</p>
 
       <div class="grid2">
         <div class="fld"><label>Department</label><input type="text" id="fDept" placeholder="Customer Service"></div>
-        <div class="fld"><label>Topic</label><input type="text" id="fTopic" placeholder="Returns and Refunds"></div>
-        <div class="fld"><label>Scenario</label><input type="text" id="fScenario" placeholder="Customer wants to return an item"></div>
+        <div class="fld"><label>Topic</label><input type="text" id="fTopic" placeholder="Returns"></div>
+        <div class="fld"><label>Decision</label><input type="text" id="fDecision" placeholder="Can we accept this return?"></div>
       </div>
 
       <div class="fld">
@@ -341,13 +394,41 @@
 const KEY = 'wisdomBase.v1';
 const ANY = 'Any';
 
+/* ---------- the condition library ----------
+   A condition is defined ONCE, with fixed answers, and reused by every record
+   that needs it. This is the thing that stops "Whose mistake is it?" turning
+   into "Product Category" on the next rebuild. */
+function seedConditions(){ return [
+  { id:'c-fault', name:'Whose mistake is it?',
+    detail:'Abolox error means wrong item sent, wrong quantity, wrong address caused by us, factory defect, damage in shipping, or an imprinting error',
+    options:[
+      {label:'Abolox error', hints:['our fault','our mistake','we shipped wrong','wrong item','defect','damaged in shipping','our error','imprint error']},
+      {label:'Customer',     hints:['changed their mind','ordered wrong','no longer needs','buyer remorse','customer fault']}
+    ]},
+  { id:'c-days', name:'Days since the customer received the item', detail:'',
+    options:[
+      {label:'60 days or less',  hints:['within 60','a week ago','last month','recently']},
+      {label:'More than 60 days',hints:['months ago','past 60','last year','long time ago']}
+    ]},
+  { id:'c-category', name:'Product category', detail:'',
+    options:[
+      {label:'Standard returnable product', hints:['normal','standard','regular item']},
+      {label:'Special order, built-to-order or customized', hints:['special order','custom','built to order','personalised','personalized','imprinted']},
+      {label:'Hazardous or health and personal care', hints:['hazmat','hazardous','chemical','health','personal care']}
+    ]},
+  { id:'c-conditions', name:'Does it meet all five return conditions?',
+    detail:'unused and resellable; not damaged or altered; in original packaging; identification and tags intact; nothing missing from parts, accessories or documentation',
+    options:[{label:'Yes', hints:['unused','sealed','like new','resellable']},
+             {label:'No',  hints:['used','opened','missing parts','no packaging']}]}
+];}
+
 /* ---------- seed content: the spec's Returns and Refunds records ---------- */
 function seed(){ return {
   records: [
     {
       id:'wb-001',
-      dept:'Customer Service', topic:'Returns and Refunds',
-      scenario:'Customer wants to return an item',
+      dept:'Customer Service', topic:'Returns',
+      scenario:'Can we accept this return?',
       trigger:'Customer wants to return an item, what do I do?',
       aliases:['return','refund','send it back','money back','wrong item','damaged item','they want to return it','refund request'],
       inputs:[
@@ -415,8 +496,8 @@ function seed(){ return {
     },
     {
       id:'wb-002',
-      dept:'Customer Service', topic:'Returns and Refunds',
-      scenario:'Return request is outside the return window',
+      dept:'Customer Service', topic:'Returns',
+      scenario:'Can we accept it past the return window?',
       trigger:'They want to return something but it is past the return window, can I still take it?',
       aliases:['past the window','too late to return','expired return','outside return period','30 days','late return'],
       inputs:[
@@ -496,8 +577,10 @@ function toast(msg, bad){
 let DB = load();
 function load(){
   try{ const raw = localStorage.getItem(KEY); if(raw){ const d = JSON.parse(raw);
-    if(d && Array.isArray(d.records)){ d.gaps = d.gaps || []; d.versions = d.versions || {}; return d; } } }catch(e){ console.warn('load failed', e); }
-  const s = seed(); s.versions = {}; return s;
+    if(d && Array.isArray(d.records)){ d.gaps = d.gaps || []; d.versions = d.versions || {};
+      d.conditions = (d.conditions && d.conditions.length) ? d.conditions : seedConditions();
+      return d; } } }catch(e){ console.warn('load failed', e); }
+  const s = seed(); s.versions = {}; s.conditions = seedConditions(); return s;
 }
 /* Every save keeps the previous version so nothing is ever a one way door.
    In cloud mode the server does this. Off disk, we keep them here. */
@@ -518,13 +601,17 @@ function save(){
 
 /* pull the shared copy. non-admins are only ever sent approved records. */
 async function pullCloud(){
-  const [{records}, gapsRes] = await Promise.all([
+  const [{records}, gapsRes, condRes] = await Promise.all([
     api('/api/records'),
-    ME.isAdmin ? api('/api/gaps').catch(()=>({gaps:[]})) : Promise.resolve({gaps:[]})
+    ME.isAdmin ? api('/api/gaps').catch(()=>({gaps:[]})) : Promise.resolve({gaps:[]}),
+    api('/api/conditions').catch(()=>({conditions:[]}))
   ]);
   DB = {
     records,
-    gaps: (gapsRes.gaps||[]).map(g => ({ id:g.id, q:g.question, at:(g.asked_at||'').slice(0,10), by:g.asked_by }))
+    gaps: (gapsRes.gaps||[]).map(g => ({ id:g.id, q:g.question, at:(g.asked_at||'').slice(0,10), by:g.asked_by })),
+    // first run on a fresh database: start from the built in vocabulary
+    conditions: (condRes.conditions && condRes.conditions.length) ? condRes.conditions : seedConditions(),
+    versions: {}
   };
 }
 
@@ -552,7 +639,23 @@ function renderWho(){
 const live = () => DB.records.filter(r => r.status === 'approved');
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uniq = a => [...new Set(a)];
-function optLabels(inp){ return (inp.options||[]).map(o => typeof o === 'string' ? o : o.label); }
+/* An input either points at a library condition, or carries its own wording.
+   Everything downstream reads it through here, so both shapes work and old
+   records keep running. */
+function resolveInput(inp){
+  if(inp && inp.ref){
+    const c = (DB.conditions||[]).find(x => x.id === inp.ref);
+    return c ? { name:c.name, detail:c.detail||'', options:c.options||[], ref:c.id, missing:false }
+             : { name:'(this condition was deleted)', detail:'', options:[], ref:inp.ref, missing:true };
+  }
+  const sp = splitName((inp && inp.name) || '');
+  return { name:sp.q, detail:sp.detail, options:(inp && inp.options) || [], ref:null, missing:false };
+}
+
+function optLabels(inp){
+  const src = inp && (inp.ref || inp.options === undefined) ? resolveInput(inp).options : (inp.options || []);
+  return src.map(o => typeof o === 'string' ? o : o.label);
+}
 
 /* A question like "Are ALL conditions met? (unused; undamaged; ...)" carries
    its own criteria, which is right. But the criteria are reference material,
@@ -615,7 +718,7 @@ function detect(rec, q){
   const picks = [];
   rec.inputs.forEach((inp, i) => {
     let found = '';
-    for(const o of (inp.options||[])){
+    for(const o of resolveInput(inp).options){
       const label = (typeof o === 'string') ? o : o.label;
       const probes = [label.toLowerCase(), ...optHints(o).map(h => String(h).toLowerCase())];
       if(probes.some(p => p && ql.includes(p))){ found = label; break; }
@@ -627,7 +730,66 @@ function detect(rec, q){
 
 /* ---------- navigation state ---------- */
 let nav = { dept:null, topic:null, recId:null };
-let picks = [];
+
+/* A customer asks one question. Answering it can take several decisions, so a
+   flow is the whole run: the steps stack on one page as they are answered, and
+   the last one prints the complete answer. The rep never assembles anything. */
+let flow = [];                       // [{recId, picks:[]}]
+const clearFlow = () => { flow = []; };
+const blankPicks = rec => (rec.inputs || []).map(() => '');
+
+/* Extend or trim the flow to match the answers given so far. Changing an
+   earlier answer must throw away the steps that followed from the old one. */
+function syncFlow(){
+  for(let i = 0; i < flow.length; i++){
+    const rec = live().find(r => r.id === flow[i].recId);
+    if(!rec){ flow.length = i; return; }
+
+    const rule = evaluate(rec, flow[i].picks);
+    const nextId = rule && rule.next ? rule.next : null;
+
+    if(!nextId){ flow.length = i + 1; return; }
+    const nx = live().find(r => r.id === nextId);
+    if(!nx){ flow.length = i + 1; return; }
+
+    if(flow[i+1] && flow[i+1].recId === nextId) continue;   // already there
+    flow.length = i + 1;
+    flow.push({ recId: nextId, picks: blankPicks(nx) });
+  }
+}
+
+function summaryLines(rule){
+  const s = rule && rule.summary;
+  const list = Array.isArray(s) ? s : (s ? [s] : []);
+  const clean = list.map(x => String(x).trim()).filter(Boolean);
+  return clean.length ? clean : (rule && rule.verdict ? [String(rule.verdict)] : []);
+}
+
+function caseSummary(){
+  if(flow.length < 2) return '';
+  // only once the last step has actually landed on a decision that ends it
+  const last = flow[flow.length - 1];
+  const lastRec = live().find(r => r.id === last.recId);
+  const lastRule = lastRec && evaluate(lastRec, last.picks);
+  if(!lastRule || lastRule.next) return '';
+
+  const lines = [];
+  for(const step of flow){
+    const rec = live().find(r => r.id === step.recId);
+    const rule = rec && evaluate(rec, step.picks);
+    if(rule) lines.push(...summaryLines(rule));
+  }
+  if(!lines.length) return '';
+  return `<div class="block"><div class="blabel">The whole case</div>
+    <div class="summary">
+      ${lines.map(l => {
+        const i = l.indexOf(':');
+        return i > 0
+          ? `<div class="srow"><span class="skey">${esc(l.slice(0,i).trim())}</span><span class="sval">${esc(l.slice(i+1).trim())}</span></div>`
+          : `<div class="srow"><span class="sval" style="grid-column:1/-1">${esc(l)}</span></div>`;
+      }).join('')}
+    </div></div>`;
+}
 
 function go(view){
   for(const v of ['find','brain','admin']){
@@ -648,17 +810,24 @@ function renderFind(){
   if(!nav.recId) renderQuestions();
 
   if(nav.recId){
-    // only approved records are ever served to employees, even if we are standing on one
-    const rec = recs.find(r => r.id===nav.recId);
-    if(rec){ body.innerHTML = recordView(rec); wireCtx(rec); return; }
-    nav.recId = null; picks = [];
+    if(!flow.length){ const r0 = recs.find(r => r.id===nav.recId);
+      if(r0) flow = [{ recId:r0.id, picks: blankPicks(r0) }]; }
+    syncFlow();
+    if(flow.length){
+      body.innerHTML = flow.map((step, i) => {
+        const rec = recs.find(r => r.id === step.recId);
+        return rec ? recordView(rec, i) : '';
+      }).join('') + caseSummary();
+      return;
+    }
+    nav.recId = null;
   }
   if(nav.topic){
     const list = recs.filter(r => r.dept===nav.dept && r.topic===nav.topic);
     body.innerHTML = list.length
       ? '<div class="cards">' + list.map(r =>
           `<button class="card" onclick="openRec('${r.id}')"><b>${esc(r.scenario)}</b><small>${esc(r.trigger)}</small></button>`).join('') + '</div>'
-      : '<div class="empty">No approved scenarios here yet.</div>';
+      : '<div class="empty">No approved decisions here yet.</div>';
     return;
   }
   if(nav.dept){
@@ -666,7 +835,7 @@ function renderFind(){
     body.innerHTML = topics.length
       ? '<div class="cards">' + topics.map(t => {
           const n = recs.filter(r => r.dept===nav.dept && r.topic===t).length;
-          return `<button class="card" onclick="openTopic(${JSON.stringify(t).replace(/"/g,'&quot;')})"><b>${esc(t)}</b><small>${n} scenario${n===1?'':'s'}</small></button>`;
+          return `<button class="card" onclick="openTopic(${JSON.stringify(t).replace(/"/g,'&quot;')})"><b>${esc(t)}</b><small>${n} decision${n===1?'':'s'}</small></button>`;
         }).join('') + '</div>'
       : '<div class="empty">No approved topics in this department yet.</div>';
     return;
@@ -675,7 +844,7 @@ function renderFind(){
   body.innerHTML = depts.length
     ? '<div class="cards">' + depts.map(d => {
         const n = recs.filter(r => r.dept===d).length;
-        return `<button class="card" onclick="openDept(${JSON.stringify(d).replace(/"/g,'&quot;')})"><b>${esc(d)}</b><small>${n} scenario${n===1?'':'s'}</small></button>`;
+        return `<button class="card" onclick="openDept(${JSON.stringify(d).replace(/"/g,'&quot;')})"><b>${esc(d)}</b><small>${n} decision${n===1?'':'s'}</small></button>`;
       }).join('') + '</div>'
     : '<div class="empty">Nothing approved yet. Add records in the Admin tab.</div>';
 }
@@ -690,28 +859,36 @@ function renderCrumbs(){
   c.innerHTML = parts.join('');
 }
 
-function resetNav(){ nav={dept:null,topic:null,recId:null}; picks=[]; renderFind(); }
-function openDept(d){ nav={dept:d,topic:null,recId:null}; picks=[]; renderFind(); }
-function openTopic(t){ nav.topic=t; nav.recId=null; picks=[]; renderFind(); }
+function resetNav(){ nav={dept:null,topic:null,recId:null}; clearFlow(); renderFind(); }
+function openDept(d){ nav={dept:d,topic:null,recId:null}; clearFlow(); renderFind(); }
+function openTopic(t){ nav.topic=t; nav.recId=null; clearFlow(); renderFind(); }
 function openRec(id, prefill){
   const r = DB.records.find(x=>x.id===id); if(!r) return;
   nav = { dept:r.dept, topic:r.topic, recId:id };
-  picks = prefill || r.inputs.map(()=> '');
+  flow = [{ recId:id, picks: prefill || blankPicks(r) }];
+  syncFlow();
   logLookup(r);
   document.getElementById('askResults').innerHTML='';
   renderFind();
   document.getElementById('browsePanel').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-function recordView(rec){
+function recordView(rec, step){
+  const picks = flow[step] ? flow[step].picks : [];
+  const total = flow.length;
+  const head = step === 0
+    ? `<h2>${total > 1 ? `<span class="stepnum">Step 1 of ${total}</span> ` : ''}${esc(rec.scenario)}</h2>
+       <p class="sub">${esc(rec.trigger)}</p>`
+    : `<div class="stephead"><span class="stepnum">Step ${step+1} of ${total}</span>
+         <span class="stepname">${esc(rec.scenario)}</span></div>`;
   const ctx = rec.inputs.map((inp,i) => {
-    const opts = optLabels(inp).map(l =>
+    const R = resolveInput(inp);
+    const opts = R.options.map(o => (typeof o === 'string' ? o : o.label)).map(l =>
       `<option value="${esc(l)}"${picks[i]===l?' selected':''}>${esc(l)}</option>`).join('');
-    const { q, detail } = splitName(inp.name);
     return `<div>
-      <label class="${q.length > 44 ? 'lng' : ''}">${esc(q)}</label>
-      <select data-i="${i}" onchange="setPick(this)"><option value="">Choose...</option>${opts}</select>
-      ${detail ? `<div class="detail"><b>Counts as:</b> ${esc(detail)}</div>` : ''}
+      <label class="${R.name.length > 44 ? 'lng' : ''}">${esc(R.name)}</label>
+      <select data-s="${step}" data-i="${i}" onchange="setPick(this)"><option value="">Choose...</option>${opts}</select>
+      ${R.detail ? `<div class="detail"><b>Counts as:</b> ${esc(R.detail)}</div>` : ''}
     </div>`;
   }).join('');
 
@@ -742,22 +919,23 @@ function recordView(rec){
       ${openBlock(rule)}
       <div class="block"><div class="blabel">Your authority</div><div>${esc(rule.authority||'Not set')}</div></div>
       <div class="block"><div class="blabel">Escalate when</div><div>${esc(rule.escalate||'Not set')}</div></div>
-      ${nextStep(rule)}
+      ${nextStep(rule, rec)}
       <div class="block muted" style="font-size:12.5px">Record ${esc(rec.id)} &middot; owner ${esc(rec.owner||'unassigned')} &middot; updated ${esc(rec.updated||'')}</div>`;
   }
 
   const tbl = `
     <div class="block"><div class="blabel">Full decision table</div>
     <div class="tblwrap"><table><thead><tr>
-      ${rec.inputs.map(i=>`<th title="${esc(i.name)}">${esc(shortName(i.name))}</th>`).join('')}<th>Decision</th></tr></thead><tbody>
+      ${rec.inputs.map(i=>{const R=resolveInput(i);
+        return `<th title="${esc(R.detail||R.name)}">${esc(R.name)}</th>`;}).join('')}<th>Decision</th></tr></thead><tbody>
       ${rec.rules.map(r=>{
         const hit = rule && r===rule;
         return `<tr class="${hit?'hit':''}">${rec.inputs.map((_,i)=>`<td>${esc(r.when[i]||ANY)}</td>`).join('')}<td>${esc(r.verdict)}</td></tr>`;
       }).join('')}
     </tbody></table></div></div>`;
 
-  return `<h2>${esc(rec.scenario)}</h2><p class="sub">${esc(rec.trigger)}</p>
-    <div class="ctx">${ctx}</div>${out}${tbl}`;
+  return `<div class="stepwrap">${head}
+    <div class="ctx">${ctx}</div>${out}${tbl}</div>`;
 }
 
 /* ---------- customer script ----------
@@ -796,21 +974,45 @@ function openBlock(rule){
    One engine owns one decision. When a decision leads into the next question
    ("we accepted the return, now who pays the shipping?"), the outcome carries
    the employee straight there instead of leaving them to go hunting. */
-function nextStep(rule){
-  if(!rule.next) return '';
+function nextStep(rule, rec){
+  if(!rule.next){
+    // No script and no next step means a rep gets a verdict and then silence.
+    // Reps should not see plumbing, so only an admin is told, and told how to fix it.
+    const noScript = !String(rule.wording || '').trim();
+    if(noScript && ME.isAdmin && rec){
+      return `<div class="block nextwrap">
+        <div class="blabel">This outcome goes nowhere yet</div>
+        <div class="openq">It has no script and no next decision, so a rep reaching it
+          gets this verdict and then nothing. Either write what to say, or point it at
+          the decision that comes next.
+          <div style="margin-top:10px">
+            <button class="btn ghost sm" onclick="fixRule('${rec.id}')">Fix this record</button>
+          </div>
+        </div></div>`;
+    }
+    return '';
+  }
   const nx = live().find(r => r.id === rule.next);
-  // a next step pointing at a deleted or unapproved record shows nothing,
-  // rather than a button that dead-ends
-  if(!nx) return '';
-  return `<div class="block nextwrap">
-    <div class="blabel">This is not the end of it</div>
-    <button class="btn nextbtn" onclick="openRec('${nx.id}')">
-      Next decision: ${esc(nx.scenario)} &rsaquo;</button>
-    <div class="muted" style="font-size:12.5px;margin-top:6px">${esc(nx.dept)} &rsaquo; ${esc(nx.topic)}</div>
-  </div>`;
+  // a next step pointing at a deleted or unapproved record must not pretend
+  if(!nx){
+    return ME.isAdmin
+      ? `<div class="block nextwrap"><div class="blabel">Broken link</div>
+           <div class="openq">This outcome points at a decision that is deleted or not
+           approved, so the flow stops here.
+           <div style="margin-top:10px"><button class="btn ghost sm" onclick="fixRule('${rec.id}')">Fix this record</button></div>
+           </div></div>`
+      : '';
+  }
+  // the next step renders underneath on its own, so this is just a signpost
+  return `<div class="block handoff">Not finished. Next: <b>${esc(nx.scenario)}</b></div>`;
 }
 
-function setPick(sel){ picks[+sel.dataset.i] = sel.value; renderFind(); }
+function setPick(sel){
+  const st = +sel.dataset.s;
+  if(flow[st]) flow[st].picks[+sel.dataset.i] = sel.value;
+  syncFlow();
+  renderFind();
+}
 function wireCtx(){ /* selects are re-rendered each pass, nothing to wire */ }
 
 /* ---------- live question list ----------
@@ -855,9 +1057,17 @@ function renderQuestions(){
     } else {
       // never dead-end: show the closest few anyway and say so
       list = scored.slice(0,3).map(x=>x.r);
-      heading = 'No direct match, closest scenarios';
+      heading = 'No direct match, closest decisions';
     }
   }
+
+  // a record that another record points at is a step inside a flow, not a
+  // question a rep should be landing on cold
+  const stepIds = new Set();
+  for(const r of all) for(const rl of (r.rules||[])) if(rl.next) stepIds.add(rl.next);
+  const entries = list.filter(r => !stepIds.has(r.id));
+  const steps   = list.filter(r =>  stepIds.has(r.id));
+  list = entries.length ? entries : list;
 
   const byPath = {};
   for(const r of list){ const k = r.dept + ' › ' + r.topic; (byPath[k] = byPath[k] || []).push(r); }
@@ -886,6 +1096,12 @@ function renderQuestions(){
       }).join('')
     ).join('') + '</div>';
 
+  if(entries.length && steps.length){
+    html += `<div class="qgroup"><div class="ghead">Steps inside those, if you need one directly</div>` +
+      steps.map(r => `<button class="qrow" onclick="pickQuestion('${r.id}')">
+        <div class="qtext">${q ? highlight(r.trigger || r.scenario, q) : esc(r.trigger || r.scenario)}</div>
+        <div class="qalt">${esc(r.dept)} &rsaquo; ${esc(r.topic)}</div></button>`).join('') + '</div>';
+  }
   if(truncated) html += `<div class="qcount">and ${truncated} more. Start typing to narrow the list.</div>`;
   box.innerHTML = html;
 }
@@ -923,7 +1139,7 @@ function clearAsk(){
   document.getElementById('askBox').value = '';
   lastQuery = '';
   nav = { dept:null, topic:null, recId:null };
-  picks = [];
+  clearFlow();
   renderFind();
   document.getElementById('askBox').focus();
 }
@@ -964,11 +1180,326 @@ function renderAdmin(){
       <button class="btn ghost sm" onclick="editRecord('${r.id}')">Edit</button>
     </div>`).join('') : '<div class="empty">No records yet.</div>';
 
+  renderTopics();
+  renderConditions();
+  renderOpenItems();
+  renderLooseEnds();
+
   document.getElementById('gapsList').innerHTML = DB.gaps.length
     ? DB.gaps.map((g,i) => `<div class="rec"><div class="rmain"><div class="rname">${esc(g.q)}</div>
         <div class="rpath">asked ${esc(g.at)}</div></div>
         <button class="btn ghost sm" onclick="clearGap(${i})">Done</button></div>`).join('')
     : '<div class="empty">Nothing outstanding. Every question asked so far had an answer.</div>';
+}
+
+/* ---------- topics: rename and merge ---------- */
+let topicRows = [];
+let topicPicks = new Set();
+
+function topicKey(row){ return row.dept + '||' + row.topic; }
+
+function buildTopicRows(){
+  const byDept = new Map();
+  for(const r of (DB.records||[])){
+    const d = r.dept || '(no department)', t = r.topic || '(no topic)';
+    if(!byDept.has(d)) byDept.set(d, new Map());
+    const tm = byDept.get(d);
+    if(!tm.has(t)) tm.set(t, []);
+    tm.get(t).push(r);
+  }
+  topicRows = [];
+  const groups = [];
+  for(const [dept, tm] of byDept){
+    const idxs = [];
+    for(const [topic, recs] of tm){
+      idxs.push(topicRows.length);
+      topicRows.push({ dept, topic, recs });
+    }
+    groups.push({ dept, idxs });
+  }
+  return groups;
+}
+
+function renderTopics(){
+  const groups = buildTopicRows();
+  const el = document.getElementById('topicsList');
+  if(!groups.length){ el.innerHTML = '<div class="empty">No records yet.</div>'; return; }
+
+  el.innerHTML = groups.map(g => {
+    const picked = g.idxs.filter(i => topicPicks.has(topicKey(topicRows[i])));
+    const rows = g.idxs.map(i => {
+      const row = topicRows[i];
+      const n = row.recs.length;
+      const on = topicPicks.has(topicKey(row));
+      return `<div class="rec">
+        <input type="checkbox" style="width:17px;height:17px;flex:none;cursor:pointer"
+               ${on ? 'checked' : ''} onchange="toggleTopic(${i})">
+        <div class="rmain">
+          <input type="text" value="${esc(row.topic)}" style="width:100%"
+                 onchange="renameTopic(${i}, this.value)">
+        </div>
+        <span class="muted" style="font-size:12.5px;white-space:nowrap">${n} decision${n===1?'':'s'}</span>
+      </div>`;
+    }).join('');
+
+    const bar = picked.length >= 2 ? `
+      <div class="rec" style="background:var(--warn-soft);border-color:var(--warn)">
+        <div class="rmain">
+          <div class="rpath" style="margin-bottom:5px">Merge ${picked.length} topics into one, called:</div>
+          <input type="text" id="mergeName-${esc(g.dept)}" placeholder="Returns" style="width:100%">
+        </div>
+        <button class="btn sm" onclick="mergeTopics(${JSON.stringify(g.idxs).replace(/"/g,'&quot;')})">Merge</button>
+      </div>` : '';
+
+    return `<div style="margin-bottom:18px">
+      <div class="rpath" style="margin-bottom:8px"><b>${esc(g.dept)}</b></div>
+      ${rows}${bar}
+    </div>`;
+  }).join('');
+}
+
+function toggleTopic(i){
+  const k = topicKey(topicRows[i]);
+  if(topicPicks.has(k)) topicPicks.delete(k); else topicPicks.add(k);
+  renderTopics();
+}
+
+async function commitRecords(list){
+  const stamp = new Date().toISOString().slice(0,10);
+  list.forEach(r => r.updated = stamp);
+  if(MODE === 'cloud'){
+    try{ await pushRecords(list); }
+    catch(e){ toast('Could not save: ' + e.message, true); return false; }
+  } else { save(); }
+  renderAdmin(); resetNav();
+  return true;
+}
+
+// two records may not end up at the same department + topic + decision
+function topicCollision(recs, dept, newTopic){
+  const moving = new Set(recs.map(r => r.id));
+  const taken = new Map();
+  for(const r of recs){
+    const k = r.scenario.trim().toLowerCase();
+    if(taken.has(k)) return r.scenario;
+    taken.set(k, r.id);
+  }
+  for(const r of (DB.records||[])){
+    if(moving.has(r.id)) continue;
+    if(r.dept.toLowerCase() !== dept.toLowerCase()) continue;
+    if((r.topic||'').toLowerCase() !== newTopic.toLowerCase()) continue;
+    if(taken.has(r.scenario.trim().toLowerCase())) return r.scenario;
+  }
+  return null;
+}
+
+async function renameTopic(i, val){
+  const row = topicRows[i];
+  const name = String(val || '').trim();
+  if(!name){ toast('A topic needs a name.', true); renderTopics(); return; }
+  if(name === row.topic) return;
+  const clash = topicCollision(row.recs, row.dept, name);
+  if(clash){ toast('Cannot: two decisions would both be called "' + clash + '" in that topic.', true); renderTopics(); return; }
+  const merging = (DB.records||[]).some(r => r.dept === row.dept &&
+    (r.topic||'').toLowerCase() === name.toLowerCase() && !row.recs.includes(r));
+  row.recs.forEach(r => r.topic = name);
+  topicPicks.delete(topicKey(row));
+  if(await commitRecords(row.recs))
+    toast(merging ? 'Merged into ' + name + '.' : 'Renamed to ' + name + '.');
+}
+
+async function mergeTopics(idxs){
+  const rows = idxs.map(i => topicRows[i]).filter(r => topicPicks.has(topicKey(r)));
+  if(rows.length < 2) return;
+  const dept = rows[0].dept;
+  const box = document.getElementById('mergeName-' + dept);
+  const name = box ? box.value.trim() : '';
+  if(!name){ toast('Type the name you want them merged into first.', true); if(box) box.focus(); return; }
+  const recs = rows.flatMap(r => r.recs);
+  const clash = topicCollision(recs, dept, name);
+  if(clash){ toast('Cannot merge: two decisions would both be called "' + clash + '".', true); return; }
+  recs.forEach(r => r.topic = name);
+  topicPicks.clear();
+  if(await commitRecords(recs))
+    toast(rows.length + ' topics merged into ' + name + '.');
+}
+
+/* ---------- unsettled policy questions ---------- */
+function clearOpen(ri, btn){
+  editing.rules[ri].open = [];
+  const box = btn.closest('.fld');
+  const ta = box && box.querySelector('textarea');
+  if(ta) ta.value = '';
+}
+
+function openItems(){
+  const rows = [];
+  (DB.records||[]).forEach(r => (r.rules||[]).forEach((rule, ri) => {
+    (rule.open||[]).forEach((line, li) => {
+      if(String(line||'').trim()) rows.push({ rid:r.id, scenario:r.scenario, ri, li,
+        line:String(line), verdict:rule.verdict||'' });
+    });
+  }));
+  return rows;
+}
+
+/* The same question is usually written on several rules. Group them so one
+   click settles the question everywhere it appears. */
+function openGroups(){
+  const map = new Map();
+  for(const x of openItems()){
+    const key = x.line.trim().toLowerCase().replace(/\s+/g,' ');
+    if(!map.has(key)) map.set(key, { line:x.line, where:[] });
+    map.get(key).where.push(x);
+  }
+  return [...map.values()];
+}
+
+function renderOpenItems(){
+  const groups = openGroups();
+  const n = groups.length;
+  document.getElementById('openCount').textContent =
+    n ? n + (n===1?' question open':' questions open') : '';
+  document.getElementById('openList').innerHTML = n ? groups.map((g,gi) => {
+    const recs = [...new Set(g.where.map(w => w.scenario))];
+    const spots = g.where.length === 1
+      ? `${esc(recs[0])} &rsaquo; Rule ${g.where[0].ri+1}`
+      : `${esc(recs.join(', '))} &mdash; on ${g.where.length} rules`;
+    return `
+    <div class="rec">
+      <div class="rmain">
+        <div class="rname">${esc(g.line)}</div>
+        <div class="rpath">${spots}</div>
+      </div>
+      <button class="btn ghost sm" onclick="editRecord('${g.where[0].rid}')">Open the rule</button>
+      <button class="btn ghost sm" onclick="settleGroup(${gi})">Settled</button>
+    </div>`;}).join('')
+    : '<div class="empty">Nothing outstanding. Every rule is fully decided.</div>';
+}
+
+async function settleGroup(gi){
+  const g = openGroups()[gi];
+  if(!g) return;
+  const touched = new Map();
+  // splice from the back so earlier indexes stay valid
+  const spots = g.where.slice().sort((a,b) => b.ri - a.ri || b.li - a.li);
+  for(const w of spots){
+    const rec = (DB.records||[]).find(r => r.id === w.rid);
+    if(!rec || !rec.rules[w.ri] || !Array.isArray(rec.rules[w.ri].open)) continue;
+    rec.rules[w.ri].open.splice(w.li, 1);
+    rec.updated = new Date().toISOString().slice(0,10);
+    touched.set(rec.id, rec);
+    if(typeof editing === 'object' && editing && editing.id === w.rid &&
+       editing.rules[w.ri] && Array.isArray(editing.rules[w.ri].open)){
+      editing.rules[w.ri].open.splice(w.li, 1);
+    }
+  }
+  if(typeof editing === 'object' && editing && touched.has(editing.id) &&
+     typeof drawRules === 'function' &&
+     !document.getElementById('editorPanel').classList.contains('hidden')) drawRules();
+  if(MODE === 'cloud'){
+    try{ await pushRecords([...touched.values()]); }
+    catch(e){ toast('Could not save: '+e.message, true); return; }
+  } else { save(); }
+  renderAdmin(); resetNav();
+  toast(spots.length > 1 ? `Settled on ${spots.length} rules.` : 'Settled.');
+}
+
+/* ---------- the conditions library ---------- */
+function usageCount(id){
+  return DB.records.filter(r => (r.inputs||[]).some(i => i && i.ref === id)).length;
+}
+
+function renderConditions(){
+  const lib = DB.conditions || [];
+  document.getElementById('sumConds').textContent =
+    lib.length ? lib.length + ' question' + (lib.length===1?'':'s') : 'none yet';
+  document.getElementById('condList').innerHTML = lib.map((c,i) => {
+    const used = usageCount(c.id);
+    return `<div class="inputrow">
+      <div class="row" style="margin-bottom:8px">
+        <input type="text" style="flex:1" value="${esc(c.name)}" placeholder="Whose mistake is it?"
+               oninput="editCond(${i},'name',this.value)">
+        <span class="muted" style="font-size:12.5px;white-space:nowrap">used by ${used}</span>
+        <button class="btn danger sm" onclick="delCondition(${i})">Remove</button>
+      </div>
+      <div class="fld" style="margin:0 0 8px">
+        <label style="font-weight:550;color:var(--muted)">Answers</label>
+        <input type="text" value="${esc((c.options||[]).map(o=>typeof o==='string'?o:o.label).join(', '))}"
+               placeholder="Abolox error, Customer" oninput="editCondOpts(${i}, this.value)">
+      </div>
+      <div class="fld" style="margin:0">
+        <label style="font-weight:550;color:var(--muted)">Counts as (shown under the question)</label>
+        <textarea placeholder="unused and resellable; not damaged; original packaging..."
+                  oninput="editCond(${i},'detail',this.value)">${esc(c.detail||'')}</textarea>
+      </div>
+    </div>`;}).join('') ||
+    '<div class="muted" style="font-size:13.5px;margin-bottom:10px">No conditions yet.</div>';
+}
+
+function editCond(i, field, val){
+  DB.conditions[i][field] = val;
+  saveConditions();
+}
+function editCondOpts(i, csv){
+  const labels = csv.split(',').map(x=>x.trim()).filter(Boolean);
+  const old = DB.conditions[i].options || [];
+  DB.conditions[i].options = labels.map(l => {
+    const prev = old.find(o => (typeof o==='string'?o:o.label) === l);
+    return prev && typeof prev === 'object' ? prev : { label:l, hints:[] };
+  });
+  saveConditions();
+}
+function addCondition(){
+  DB.conditions = DB.conditions || [];
+  DB.conditions.push({ id:'c-'+Date.now().toString(36), name:'', detail:'', options:[] });
+  saveConditions(); renderConditions();
+}
+function delCondition(i){
+  const c = DB.conditions[i];
+  const used = usageCount(c.id);
+  if(used){ toast(`Still used by ${used} record${used===1?'':'s'}. Remove it from those first.`, true); return; }
+  DB.conditions.splice(i,1);
+  saveConditions(); renderConditions();
+}
+
+let condTimer = null;
+function saveConditions(){
+  clearTimeout(condTimer);
+  condTimer = setTimeout(async () => {
+    if(MODE === 'cloud'){
+      try{ await api('/api/conditions', {method:'PUT', body:JSON.stringify(DB.conditions)}); }
+      catch(e){ toast(e.message, true); }
+    } else { save(); }
+    renderFind();
+  }, 600);
+}
+
+/* Every outcome should either say something or lead somewhere. These do neither. */
+function looseEnds(){
+  const out = [];
+  for(const r of DB.records){
+    (r.rules || []).forEach((rule, i) => {
+      if(!rule.next && !String(rule.wording || '').trim()){
+        out.push({ id:r.id, scenario:r.scenario, dept:r.dept, topic:r.topic,
+                   n:i+1, verdict:rule.verdict || '(no decision written)' });
+      }
+    });
+  }
+  return out;
+}
+
+function renderLooseEnds(){
+  const list = looseEnds();
+  document.getElementById('looseList').innerHTML = list.length
+    ? list.map(x => `<div class="rec">
+        <div class="rmain">
+          <div class="rname">${esc(x.verdict)}</div>
+          <div class="rpath">${esc(x.scenario)} &middot; rule ${x.n} &middot; ${esc(x.dept)} &rsaquo; ${esc(x.topic)}</div>
+        </div>
+        <button class="btn ghost sm" onclick="fixRule('${x.id}')">Fix</button>
+      </div>`).join('')
+    : '<div class="empty">Nothing loose. Every outcome either says something or leads somewhere.</div>';
 }
 
 function clearGap(i){
@@ -989,7 +1520,7 @@ function editRecord(id){
   document.getElementById('delBtn').classList.toggle('hidden', !id);
   document.getElementById('fDept').value = editing.dept;
   document.getElementById('fTopic').value = editing.topic;
-  document.getElementById('fScenario').value = editing.scenario;
+  document.getElementById('fDecision').value = editing.scenario;
   document.getElementById('fTrigger').value = editing.trigger;
   document.getElementById('fAliases').value = (editing.aliases||[]).join(', ');
   document.getElementById('fStatus').value = editing.status;
@@ -1002,24 +1533,49 @@ function editRecord(id){
 function closeEditor(){ editing=null; document.getElementById('editorPanel').classList.add('hidden'); }
 
 function drawInputs(){
-  document.getElementById('inputsWrap').innerHTML = editing.inputs.map((inp,i)=>`
+  const lib = DB.conditions || [];
+  document.getElementById('inputsWrap').innerHTML = editing.inputs.map((inp,i)=>{
+    const R = resolveInput(inp);
+    return `
     <div class="inputrow">
       <div class="row" style="margin-bottom:8px">
-        <input type="text" style="flex:1" value="${esc(inp.name)}" placeholder="Whose fault was it?"
-               oninput="editing.inputs[${i}].name=this.value">
+        <select style="flex:1" onchange="setInputRef(${i}, this.value)">
+          ${lib.map(c => `<option value="${esc(c.id)}"${R.ref===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}
+          <option value="__inline__"${R.ref?'':' selected'}>Not in the library (this record only)</option>
+        </select>
         <button class="btn danger sm" onclick="delInput(${i})">Remove</button>
       </div>
-      <div class="fld" style="margin:0">
-        <label style="font-weight:550;color:var(--muted)">Possible answers</label>
-        <input type="text" value="${esc(optLabels(inp).join(', '))}" placeholder="Ours, Customer, Carrier"
-               oninput="setOpts(${i}, this.value)">
-        <div class="hint">Comma separated. Changing these resets the matching column in the table below.</div>
-      </div>
-    </div>`).join('') || '<div class="muted" style="font-size:13.5px;margin-bottom:10px">No context questions yet. Add one if the answer depends on the details.</div>';
+      ${R.ref ? `<div class="hint">${R.detail ? '<b>Counts as:</b> ' + esc(R.detail) + '<br>' : ''}
+          Answers: ${esc(R.options.map(o=>typeof o==='string'?o:o.label).join(', '))}.
+          Edit this question for every record in the Conditions library above.</div>`
+        : `<div class="fld" style="margin:0">
+             <input type="text" value="${esc(inp.name||'')}" placeholder="Question just for this record"
+                    oninput="editing.inputs[${i}].name=this.value" style="margin-bottom:6px">
+             <label style="font-weight:550;color:var(--muted)">Possible answers</label>
+             <input type="text" value="${esc(optLabels(inp).join(', '))}" placeholder="Yes, No"
+                    oninput="setOpts(${i}, this.value)">
+             <div class="hint">One-off question. If you will use it again, add it to the library instead.</div>
+           </div>`}
+    </div>`;}).join('') ||
+    '<div class="muted" style="font-size:13.5px;margin-bottom:10px">No questions yet. Add one from your library.</div>';
 }
-function addInput(){ editing.inputs.push({name:'', options:[]}); editing.rules.forEach(r=>r.when.push(ANY)); drawInputs(); drawRules(); }
+
+function setInputRef(i, val){
+  if(val === '__inline__'){ editing.inputs[i] = { name:'', options:[] }; }
+  else { editing.inputs[i] = { ref: val }; }
+  editing.rules.forEach(r => r.when[i] = ANY);   // answers changed, so clear that column
+  drawInputs(); drawRules();
+}
+
+function addInput(){
+  const first = (DB.conditions||[])[0];
+  editing.inputs.push(first ? { ref:first.id } : { name:'', options:[] });
+  editing.rules.forEach(r=>r.when.push(ANY));
+  drawInputs(); drawRules();
+}
 function delInput(i){ editing.inputs.splice(i,1); editing.rules.forEach(r=>r.when.splice(i,1)); drawInputs(); drawRules(); }
 function setOpts(i, csv){
+  if(editing.inputs[i].ref) return;          // library conditions are edited in the library
   const labels = csv.split(',').map(s=>s.trim()).filter(Boolean);
   const old = editing.inputs[i].options||[];
   editing.inputs[i].options = labels.map(l => {
@@ -1033,7 +1589,7 @@ function drawRules(){
   document.getElementById('sumRules').textContent =
     editing.rules.length ? editing.rules.length + (editing.rules.length===1?' rule':' rules') : 'none yet';
   document.getElementById('sumInputs').textContent =
-    editing.inputs.length ? editing.inputs.map(i=>shortName(i.name)||'unnamed').join(', ') : 'none yet';
+    editing.inputs.length ? editing.inputs.map(i=>resolveInput(i).name||'unnamed').join(', ') : 'none yet';
 
   document.getElementById('rulesWrap').innerHTML = editing.rules.map((r,ri)=>{
     const cond = editing.inputs.map((_,ii)=> r.when[ii]||ANY).filter(v=>v!==ANY).join(' + ') || 'any situation';
@@ -1045,7 +1601,7 @@ function drawRules(){
         <button class="btn danger sm" onclick="delRule(${ri})">Remove rule</button>
       </div>
       <div class="ctx" style="margin-top:0">
-        ${editing.inputs.map((inp,ii)=>`<div><label>${esc(shortName(inp.name)||'Question '+(ii+1))}</label>
+        ${editing.inputs.map((inp,ii)=>`<div><label>${esc(resolveInput(inp).name||'Question '+(ii+1))}</label>
           <select onchange="editing.rules[${ri}].when[${ii}]=this.value">
             <option value="${ANY}"${(r.when[ii]||ANY)===ANY?' selected':''}>${ANY}</option>
             ${optLabels(inp).map(l=>`<option value="${esc(l)}"${r.when[ii]===l?' selected':''}>${esc(l)}</option>`).join('')}
@@ -1056,13 +1612,21 @@ function drawRules(){
                oninput="editing.rules[${ri}].verdict=this.value"></div>
       <div class="fld" style="margin-bottom:10px"><label>Steps</label>
         <textarea placeholder="One step per line" oninput="editing.rules[${ri}].steps=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)">${esc((r.steps||[]).join('\n'))}</textarea></div>
+      <div class="fld" style="margin-bottom:10px"><label>Summary line for the case</label>
+        <textarea placeholder="Return shipping: Customer pays"
+          oninput="editing.rules[${ri}].summary=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)">${esc((r.summary||[]).join('\n'))}</textarea>
+        <div class="hint">One "Label: Value" per line. These stack up as the rep moves through the chain and are shown together at the end.</div></div>
       <div class="fld" style="margin-bottom:10px"><label>What to say to the customer</label>
         <textarea oninput="editing.rules[${ri}].wording=this.value">${esc(r.wording||'')}</textarea>
         <div class="hint">Read aloud word for word. No placeholders, no brackets, nothing to fill in.</div></div>
-      <div class="fld" style="margin-bottom:10px"><label>Not decided yet</label>
-        <textarea placeholder="One open question per line. These are never said to a customer."
-          oninput="editing.rules[${ri}].open=this.value.split('\n').map(s=>s.trim()).filter(Boolean)">${esc((r.open||[]).join('\n'))}</textarea>
-        <div class="hint">Policy gaps for you or Colton to settle. Kept out of the script.</div></div>
+      <div class="fld" style="margin-bottom:10px">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:5px">
+          <label style="margin:0">Not decided yet <span class="muted" style="font-weight:400">(optional)</span></label>
+          <button type="button" class="btn ghost sm" onclick="clearOpen(${ri}, this)">Clear</button>
+        </div>
+        <textarea placeholder="Leave this empty unless a real policy question is unsettled."
+          oninput="editing.rules[${ri}].open=this.value.split('\\n').map(s=>s.trim()).filter(Boolean)">${esc((r.open||[]).join('\n'))}</textarea>
+        <div class="hint">Leave it blank when the rule is fully decided. Anything in here shows as a yellow note to the rep and is never said to a customer.</div></div>
       <div class="row">
         <div class="fld" style="flex:1;margin:0"><label>Who can do this alone</label>
           <input type="text" value="${esc(r.authority||'')}" placeholder="Any CS rep. No approval needed."
@@ -1082,13 +1646,13 @@ function drawRules(){
       </div>
     </details>`;}).join('') || '<div class="muted" style="font-size:13.5px;margin-bottom:10px">No rules yet. Add at least one.</div>';
 }
-function addRule(){ editing.rules.push({ when: editing.inputs.map(()=>ANY), verdict:'', steps:[], wording:'', authority:'', escalate:'', open:[] }); drawRules(); }
+function addRule(){ editing.rules.push({ when: editing.inputs.map(()=>ANY), verdict:'', steps:[], summary:[], wording:'', authority:'', escalate:'', open:[] }); drawRules(); }
 function delRule(i){ editing.rules.splice(i,1); drawRules(); }
 
 function saveRecord(){
   editing.dept = document.getElementById('fDept').value.trim();
   editing.topic = document.getElementById('fTopic').value.trim();
-  editing.scenario = document.getElementById('fScenario').value.trim();
+  editing.scenario = document.getElementById('fDecision').value.trim();
   editing.trigger = document.getElementById('fTrigger').value.trim();
   editing.aliases = document.getElementById('fAliases').value.split(',').map(s=>s.trim()).filter(Boolean);
   editing.status = document.getElementById('fStatus').value;
@@ -1097,7 +1661,7 @@ function saveRecord(){
 
   const warn = document.getElementById('saveWarn');
   const problems = [];
-  if(!editing.dept || !editing.topic || !editing.scenario) problems.push('Department, topic and scenario are all required.');
+  if(!editing.dept || !editing.topic || !editing.scenario) problems.push('Department, topic and decision are all required.');
   if(!editing.rules.length) problems.push('A record with no rules cannot answer anything. Add at least one rule.');
   if(editing.rules.some(r => !r.verdict.trim())) problems.push('Every rule needs a decision written in it.');
   if(editing.status==='approved' && !editing.aliases.length)
@@ -1171,17 +1735,26 @@ function saveKey(){
 
 const SCHEMA_NOTE = `Return ONLY a JSON array, no prose, no markdown fence. Each element:
 {"dept":str,"topic":str,"scenario":str,"trigger":str,"aliases":[str],
- "inputs":[{"name":str,"options":[{"label":str,"hints":[str]}]}],
- "rules":[{"when":[str],"verdict":str,"steps":[str],"wording":str,"authority":str,"escalate":str,"open":[str]}]}
+ "inputs":[{"ref":str} OR {"name":str,"options":[{"label":str,"hints":[str]}]}],
+ "rules":[{"when":[str],"verdict":str,"steps":[str],"summary":[str],"wording":str,"authority":str,"escalate":str,"open":[str]}]}
 
 Rules:
+- Never use an em dash or an en dash anywhere in any text you produce. Not in
+  a verdict, a step, a summary line, a script, an authority note or an escalate
+  note. Use a comma, a full stop, or rewrite the sentence. This is absolute.
 - "when" has one entry per input, in the same order. Use "Any" where the value does not matter.
 - Order rules most specific first. First match wins.
 - Keep inputs to the 2 or 3 things that actually change the answer.
 - verdict is one decisive sentence. steps are what the employee does, in order.
 - authority says who can do this without approval. escalate says when to go to a supervisor.
 - If the notes do not state a threshold, a number or a timeframe, write the field as "NEEDS DECISION: <the question>" rather than inventing a policy. Never invent a refund window, a fee, a dollar limit or a "3 to 5 business days".
-- Do not invent scenarios the notes do not mention.
+- Do not invent decisions the notes do not mention.
+- "scenario" is the JSON key for the DECISION this record makes. Word it as the
+  question a rep is actually answering: "Can we accept this return?", not
+  "Customer wants to return an item". "topic" is the process the decision
+  belongs to, and every decision in one process shares the same topic, so a
+  return chain is topic "Returns" with several decisions inside it, never one
+  topic per decision.
 
 NEVER write a vague condition. An input named "Condition" with an option
 "Meets all requirements" is useless, because a new employee does not know what
@@ -1197,6 +1770,25 @@ and "Customer-initiated return", never "fault" and never "remorse". Carrier
 damage is not the seller's fault but is the seller's cost, and a customer
 changing their mind is nobody's fault.
 
+The "wording" field is SHORT. Two or three sentences, never more. It is spoken
+out loud by a person on a phone, so write speech, not correspondence.
+
+Use contractions. "We'll", "you'll", "isn't", "it's", "I'm". Uncontracted
+English is the single biggest thing that makes a script sound robotic when a
+human reads it aloud.
+
+Apologise plainly and generically when something went wrong: "I'm sorry for
+the trouble" or "I'm sorry about that". Never "we sincerely apologise for the
+inconvenience caused", and never name the fault category at the customer.
+They do not need to hear "this was an Abolox error", they need to hear what
+happens now.
+
+Never promise an email, a confirmation, a notification, or describe any
+internal step. The customer cares about two things: what they get, and when.
+
+No preamble, no "we would like to inform you", no restating the policy back at
+them, no listing what was decided as if reading a form.
+
 The "wording" field is spoken to a CUSTOMER, word for word, exactly as written.
 It must therefore be plain finished English with NOTHING to fill in.
 NEVER put "NEEDS DECISION", square brackets, placeholders, internal labels
@@ -1206,6 +1798,26 @@ it is wrong.
 
 Anything still undecided goes in the separate "open" field instead, as short
 plain questions for the business owner. That field is never shown as script.
+
+"open" is optional and should almost always be an empty array. Leave it empty
+unless a rule genuinely cannot be carried out without a decision only the owner
+can make: a threshold, a fee, a dollar limit, who signs off. Things a person
+could settle in one sentence. If you can write the rule without it, leave "open"
+empty. Never invent one to look thorough. Operational timing the rep does not
+control (how long a refund takes to land, how long shipping takes) is NOT an
+open question and must never go in here.
+
+Never put in "open":
+  - questions about this system, its records, or how they connect
+  - "what is the next decision record", "which engine handles this",
+    "where is the refund logic" and anything like them
+  - work that simply has not been done yet
+Those are not policy gaps, they are records that do not exist yet, and the
+answer is to build them. A rep reading "what is the next decision record?"
+learns nothing and cannot act on it.
+
+If an outcome hands off to a decision that has not been built, that is fine.
+Say nothing about it. Leave "open" empty and leave "wording" empty.
 
 The wording should close the loop as far as THIS decision goes:
   1. what we decided
@@ -1217,12 +1829,32 @@ Never end on empty ambiguity like "we will be happy to accept this return" or
 final and what, if anything, is on offer instead.
 
 IMPORTANT: each record owns exactly ONE decision. Do not answer questions that
-belong to a later decision. If eligibility is decided here but shipping cost
-and refund timing are decided elsewhere, the wording confirms the decision and
-hands off cleanly, for example "Your return is approved. Let me sort out the
-return label and refund details with you now." Do not invent the shipping or
-refund terms, and do not leave a placeholder for them either. Say only what
-this decision actually settles.`;
+belong to a later decision.
+
+Only an outcome that ENDS the matter gets a script. If the outcome hands off to
+another decision (eligibility passes, and shipping cost and refund terms are
+decided next), leave "wording" EMPTY. The employee is still mid-conversation
+and says nothing yet: they carry on to the next question and speak once at the
+end with the whole answer. A half-answer like "your return is approved, let me
+sort out the details" is worse than silence, because it invites the customer to
+ask the questions the employee is about to answer anyway.
+
+So: refusals and final outcomes get a full script. Pass-through outcomes get
+none.
+
+"summary" is one to three very short "Label: Value" lines saying what THIS
+decision settled, for example:
+  "Return: Approved"
+  "RMA: Required"
+  "Return shipping: Customer pays"
+  "Resolution: Store credit"
+  "Restocking fee: 15%"
+  "Original shipping: Not refundable"
+One call can run through several decisions, and these lines stack up so the
+last decision can show the whole case on one screen. Keep them telegraphic:
+a label, a colon, a value. No sentences, no explanation, no placeholders.
+Every outcome gets a summary, including the ones that hand off, because those
+are exactly the ones whose result would otherwise be forgotten.`;
 
 let drafts = [];
 let attachments = [];   // {name, kind:'text'|'pdf'|'image', text?, b64?, media?}
@@ -1332,6 +1964,9 @@ async function organize(){
   out.innerHTML = '';
 
   const known = uniq(DB.records.map(r => r.dept + ' > ' + r.topic)).join('; ') || 'none yet';
+  const library = (DB.conditions||[]).map(c =>
+    `  id "${c.id}" = "${c.name}"  answers: ${(c.options||[]).map(o=>typeof o==='string'?o:o.label).join(' | ')}`
+  ).join('\n') || '  (empty)';
   const textFiles = usable.filter(a => a.kind === 'text');
   const binFiles  = usable.filter(a => a.kind === 'pdf' || a.kind === 'image');
 
@@ -1339,6 +1974,21 @@ async function organize(){
 
 Departments and topics already in the system: ${known}
 Reuse an existing department and topic when the note fits one. Only create a new one when it genuinely does not.
+
+THE CONDITION LIBRARY. These questions are already defined, with fixed wording
+and fixed answers:
+${library}
+
+Build records from THESE. For every question a record needs, if the library
+already has it, use {"ref":"<that id>"} as the input and nothing else. Do not
+retype its name, do not reword it, do not change its answers, do not invent a
+near-duplicate under a different name. The "when" values in your rules must be
+exactly one of that condition's listed answers, or "Any".
+
+Only when the notes genuinely need a question the library does not cover, add
+it as a normal {"name":..., "options":[...]} input. Prefer reusing over
+inventing: a renamed duplicate is the single most damaging thing you can
+produce here, because it makes one question look like two across records.
 
 ${SCHEMA_NOTE}
 
@@ -1387,11 +2037,16 @@ ${textFiles.map(a => `\nFile "${a.name}":\n"""\n${a.text.slice(0, 60000)}\n"""`)
 }
 
 function normalizeDraft(d,i){
-  const inputs = (d.inputs||[]).map(inp => ({
-    name: String(inp.name||''),
-    options: (inp.options||[]).map(o => typeof o==='string' ? {label:o,hints:[]}
-             : {label:String(o.label||''), hints:(o.hints||[]).map(String)})
-  }));
+  const known = new Set((DB.conditions||[]).map(c => c.id));
+  const inputs = (d.inputs||[]).map(inp => {
+    // a reference to a real library condition stays a reference
+    if(inp && inp.ref && known.has(inp.ref)) return { ref: inp.ref };
+    return {
+      name: String((inp && inp.name) || ''),
+      options: ((inp && inp.options)||[]).map(o => typeof o==='string' ? {label:o,hints:[]}
+               : {label:String(o.label||''), hints:(o.hints||[]).map(String)})
+    };
+  });
   return {
     id:'wb-'+Date.now().toString(36)+'-'+i,
     dept:String(d.dept||'Unsorted'), topic:String(d.topic||'Unsorted'),
@@ -1401,6 +2056,7 @@ function normalizeDraft(d,i){
       when: inputs.map((_,ii)=> String((r.when||[])[ii] ?? ANY)),
       verdict:String(r.verdict||''), steps:(r.steps||[]).map(String),
       wording:String(r.wording||''), authority:String(r.authority||''), escalate:String(r.escalate||''),
+      summary:(Array.isArray(r.summary)?r.summary:(r.summary?[r.summary]:[])).map(String),
       open:(r.open||[]).map(String), next:String(r.next||'')
     })),
     status:'draft', owner:'', updated:new Date().toISOString().slice(0,10)
@@ -1463,7 +2119,8 @@ function renderDrafts(){
           <div class="dpath" style="margin-bottom:8px">Asked as: &ldquo;${esc(d.trigger)}&rdquo;</div>
           ${(d.aliases||[]).length?`<div class="dpath" style="margin-bottom:10px">Also finds: ${esc(d.aliases.join(', '))}</div>`:''}
           <div class="tblwrap"><table><thead><tr>
-            ${d.inputs.map(x=>`<th title="${esc(x.name)}">${esc(shortName(x.name))}</th>`).join('')}<th>Decision</th></tr></thead><tbody>
+            ${d.inputs.map(x=>{const R=resolveInput(x);
+              return `<th title="${esc(R.detail||R.name)}">${esc(R.name)}${R.ref?'':' <span class="badge-new">NEW</span>'}</th>`;}).join('')}<th>Decision</th></tr></thead><tbody>
             ${d.rules.map(r=>`<tr>${d.inputs.map((_,ii)=>`<td>${esc(r.when[ii]||ANY)}</td>`).join('')}
               <td>${marks(r.verdict)}</td></tr>`).join('')}
           </tbody></table></div>
@@ -1549,6 +2206,11 @@ async function showHistory(id){
       </div>`).join('');
 }
 
+function fixRule(id){
+  go('admin');
+  setTimeout(() => { editRecord(id); document.getElementById('secRules').open = true; }, 120);
+}
+
 function closeHistory(){ document.getElementById('historyPanel').classList.add('hidden'); }
 
 async function restoreVersion(id, versionId){
@@ -1579,16 +2241,43 @@ function exportJson(){
   a.download = 'wisdom-base-' + new Date().toISOString().slice(0,10) + '.json';
   a.click(); URL.revokeObjectURL(a.href);
 }
+/* Import ADDS and UPDATES. It never wipes what you already have: bringing in
+   one record must not cost you the other nine. */
 function importJson(ev){
   const f = ev.target.files[0]; if(!f) return;
   const r = new FileReader();
-  r.onload = () => {
+  r.onload = async () => {
     try{
       const d = JSON.parse(r.result);
       if(!d || !Array.isArray(d.records)) throw new Error('not a Wisdom Base file');
-      DB = { records:d.records, gaps:d.gaps||[] };
-      save(); renderAdmin(); resetNav();
-    }catch(e){ alert('Could not read that file: ' + e.message); }
+
+      let added = 0, updated = 0;
+      const incoming = [];
+      for(const rec of d.records){
+        const i = DB.records.findIndex(x => x.id === rec.id);
+        if(i >= 0){ DB.records[i] = rec; updated++; } else { DB.records.push(rec); added++; }
+        incoming.push(rec);
+      }
+
+      let condMsg = '';
+      if(Array.isArray(d.conditions) && d.conditions.length){
+        DB.conditions = DB.conditions || [];
+        let cAdd = 0, cUpd = 0;
+        for(const c of d.conditions){
+          const i = DB.conditions.findIndex(x => x.id === c.id);
+          if(i >= 0){ DB.conditions[i] = c; cUpd++; } else { DB.conditions.push(c); cAdd++; }
+        }
+        condMsg = `, ${cAdd} condition${cAdd===1?'':'s'} added and ${cUpd} updated`;
+      }
+
+      if(MODE === 'cloud'){
+        if(DB.conditions) await api('/api/conditions', {method:'PUT', body:JSON.stringify(DB.conditions)}).catch(()=>{});
+        await pushRecords(incoming);
+      } else { save(); }
+
+      toast(`${added} added, ${updated} updated${condMsg}`);
+      renderAdmin(); resetNav();
+    }catch(e){ toast('Could not read that file: ' + e.message, true); }
   };
   r.readAsText(f); ev.target.value='';
 }
